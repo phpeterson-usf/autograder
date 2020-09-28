@@ -21,10 +21,8 @@ pi@raspberrypi:~/phpeterson-usf/autograder $ cat config.json
 <pre><code>
 $ git clone https://github.com/phpeterson-usf/autograder.git
 $ cd autograder
-$ python3 autograder.py ~/project02
-/home/pi/project02 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 100
 </code></pre>
-
+![autograder](autograder.png)
 ## Usage for instructors
 1. Test cases for each project are expressed in JSON, as you can see in the `tests/` directory
 1. Test case inputs are a list of strings for each command-line flag and value, since
