@@ -21,8 +21,8 @@ def tests_load(cfg):
     return json_load(tests_path)
 
 
-def cmd_exec(args):
-    return subprocess.run(args, capture_output = True, timeout = 5)
+def cmd_exec(args, wd=None):
+    return subprocess.run(args, capture_output = True, timeout = 5, cwd=wd)
 
 
 def cmd_exec_rc(args):
@@ -30,8 +30,8 @@ def cmd_exec_rc(args):
     return proc.returncode
 
 
-def cmd_exec_stdout(args):
-    proc = cmd_exec(args)
+def cmd_exec_stdout(args, wd=None):
+    proc = cmd_exec(args, wd)
     return proc.stdout.decode('utf-8').rstrip('\n')
 
 
@@ -59,18 +59,36 @@ def print_red(s):
     print('\033[91m' + s + ' \033[0m', end = '')
 
 
+def test_one(repo, executable, test):
+    # build list of command line arguments
+    args = [i for i in test['input']]
+    args.insert(0, executable)
+
+    # check to see if the test needs to be run in the repo dir
+    run_in_repo = test.get('run_in_repo')
+    wd = repo + '/' if run_in_repo else None
+
+    if type(test['expected']) == list:
+        # join them to match what we get from subprocess
+        expected = '\n'.join(test['expected'])
+    else: 
+        expected = test['expected']
+
+    if cmd_exec_stdout(args, wd).lower() == expected.lower():
+        print_green(test['name'])
+        score = test['rubric']
+    else:
+        print_red(test['name'])
+        score = 0
+    return score
+
+
 def repo_test(repo, cfg, tests):
     score = 0;
     executable = repo + '/' + cfg['project']
     
     for test in tests['tests']:
-        args = [i for i in test['input']]
-        args.insert(0, executable)
-        if cmd_exec_stdout(args).lower() == test['expected'].lower():
-            print_green(test['name'])
-            score += test['rubric']
-        else:
-            print_red(test['name'])
+        score += test_one(repo, executable, test)
     return score
 
 
