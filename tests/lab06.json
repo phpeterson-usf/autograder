@@ -1,0 +1,50 @@
+{
+    "tests": [
+        {
+            "name": "max3",
+            "input": ["max3_main"],
+            "expected": [
+                "max3_c(1, 2, 3) = 3",
+                "max3_s(1, 2, 3) = 3",
+                "max3_c(1, 99, 3) = 99",
+                "max3_s(1, 99, 3) = 99",
+                "max3_c(1, -2, -3) = 1",
+                "max3_s(1, -2, -3) = 1"
+            ],
+            "run_in_repo": true,
+            "rubric": 30
+        },
+        {
+            "name": "find_max",
+            "input": ["find_max_main"],
+            "expected": [
+                "find_max_c({1, 2, 5, 4, 3}, 5) = 5",
+                "find_max_s({1, 2, 5, 4, 3}, 5) = 5",
+                "find_max_c({-300, -200, -2, -1, 0, 100, 1, 2, 5, 4}, 10) = 100",
+                "find_max_s({-300, -200, -2, -1, 0, 100, 1, 2, 5, 4}, 10) = 100"
+            ],
+            "run_in_repo": true,
+            "rubric": 30
+        },
+        {
+            "name": "fib_rec",
+            "input": ["fib_rec_main"],
+            "expected": [
+                "fib_rec_c(0) = 0",
+                "fib_rec_c(0) = 0",
+                "fib_rec_c(1) = 1",
+                "fib_rec_s(1) = 1",
+                "fib_rec_c(2) = 1",
+                "fib_rec_s(2) = 1",
+                "fib_rec_c(3) = 2",
+                "fib_rec_s(3) = 2",
+                "fib_rec_c(10) = 55",
+                "fib_rec_s(10) = 55",
+                "fib_rec_c(20) = 6765",
+                "fib_rec_s(20) = 6765"
+            ],
+            "run_in_repo": true,
+            "rubric": 40
+        }
+    ]
+}
