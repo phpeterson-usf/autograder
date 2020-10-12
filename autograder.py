@@ -22,7 +22,7 @@ def tests_load(cfg):
 
 
 def cmd_exec(args, wd=None):
-    return subprocess.run(args, capture_output = True, timeout = 5, cwd=wd)
+    return subprocess.run(args, capture_output = True, timeout = 10, cwd=wd)
 
 
 def cmd_exec_rc(args):
@@ -30,9 +30,17 @@ def cmd_exec_rc(args):
     return proc.returncode
 
 
-def cmd_exec_stdout(args, wd=None):
+def cmd_exec_capture(args, wd=None, path=None):
     proc = cmd_exec(args, wd)
-    return proc.stdout.decode('utf-8').rstrip('\n')
+    if (path):
+        # capture output written to path
+        f = open(path, 'r')
+        output = f.read()
+        f.close()
+    else:
+        # capture output written to stdout
+        output = proc.stdout.decode('utf-8')
+    return output.rstrip('\n')
 
 
 def repo_path(cfg, student):
@@ -59,9 +67,10 @@ def print_red(s):
     print('\033[91m' + s + ' \033[0m', end = '')
 
 
-def test_one(repo, executable, test):
-    # build list of command line arguments
-    args = [i for i in test['input']]
+def test_one(repo, cfg, executable, test):
+    tests = os.path.join(os.getcwd(), 'tests', cfg['project'])
+    # build list of command line arguments, replacing the sentinel value $(TESTS) if it occurs
+    args = [i.replace('$(TESTS)', tests) for i in test['input']]
     args.insert(0, executable)
 
     # check to see if the test needs to be run in the repo dir
@@ -74,7 +83,16 @@ def test_one(repo, executable, test):
     else: 
         expected = test['expected']
 
-    if cmd_exec_stdout(args, wd).lower() == expected.lower():
+    output_file = test.get('output', 'stdout')
+    if output_file == 'stdout':
+        # get actual output from stdout
+        actual = cmd_exec_capture(args, wd)
+    else:
+        # ignore stdout and get actual output from the specified file
+        path = os.path.join(repo, output_file)
+        actual = cmd_exec_capture(args, wd, path)
+        
+    if actual.lower() == expected.lower():
         print_green(test['name'])
         score = test['rubric']
     else:
@@ -88,7 +106,7 @@ def repo_test(repo, cfg, tests):
     executable = repo + '/' + cfg['project']
     
     for test in tests['tests']:
-        score += test_one(repo, executable, test)
+        score += test_one(repo, cfg, executable, test)
     return score
 
 
