@@ -1,0 +1,16 @@
+{
+    "tests": [
+        {
+            "name": "first-hex",
+            "input": ["-h", "first.hex", "$(TESTS)/first.s"],
+            "expected": [
+                "v2.0 raw",
+                "E3A0002A",
+                "E12FFF1E"
+            ],
+            "output": "first.hex",
+            "rubric": 30,
+            "run_in_repo": true
+        }
+    ]
+}

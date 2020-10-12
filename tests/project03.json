@@ -1,0 +1,31 @@
+{
+    "tests": [
+        {
+            "name": "reverse1",
+            "input": ["reverse", "foobar"],
+            "expected": [
+                "C: raboof",
+                "Assembly: raboof"
+            ],
+            "rubric": 30
+        },
+        {
+            "name": "search1",
+            "input": ["search", "4", "1", "2", "4", "8", "16", "32", "64", "128"],
+            "expected": [
+                "C: 2",
+                "Assembly: 2"
+            ],
+            "rubric": 30
+        },
+        {
+            "name": "sort1",
+            "input": ["sort", "87", "53", "63", "23", "204", "8", "42", "0"],
+            "expected": [
+                "C: 204 87 63 53 42 23 8 0 ",
+                "Assembly: 204 87 63 53 42 23 8 0 "
+            ],
+            "rubric": 40
+        }
+    ]
+}
