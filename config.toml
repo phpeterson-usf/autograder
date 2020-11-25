@@ -1,0 +1,30 @@
+credentials = "ssh"
+org = "cs-315-03-20f"
+project = "project02"
+students = [
+	"AndrewRCabezudo",
+	"chenxpeng",
+	"Jdlc224",
+	"fotakis08",
+	"mgaldi",
+	"jnhamid",
+	"alhanson7210",
+	"Omnitrix4m3",
+	"NotCarbonatedWater",
+	"yjin34",
+	"Gurjot1Kaur",
+	"jenniferlewmunoz",
+	"SigSegRee",
+	"aemarcovich",
+	"summarsh",
+	"ctmathews2", 
+	"jakeols",
+	"kaspak",
+	"stewp007", 
+	"apreciado98", 
+	"jwraffety",
+	"Lfsanchez2",
+	"Alex-Ignus",
+	"ezakharian",
+	"TiffChau",
+]
