@@ -55,8 +55,8 @@ that's how python subprocess takes arguments. Maybe there's a better way
         ]
         </code></pre>
 1. Now autograder can loop over the list of students to clone and test:
-        <pre><code>pi@raspberrypi:~/autograder $ ./ag clone
-        pi@raspberrypi:~/autograder $ ./ag test
+        <pre><code>$ ./ag clone
+        $ ./ag test
         project02-phpeterson-usf 01 02 10/10
         project02-gdbenson       01 02 10/10
         </code></pre>
