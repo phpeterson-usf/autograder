@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
 import os
 import subprocess
 import sys
@@ -27,19 +26,11 @@ def load_config(fname):
     return vars(p.parse_args())
 
 
-def json_load(path):
-    try:
-        with open(path) as json_file:
-            return json.load(json_file)
-    except FileNotFoundError:
-        print('FileNotFound: ' + path)
-        return {}
-
-
-def tests_load(cfg):
-    tests_fname = cfg['project'] + '.json'
+def load_tests(project):
+    tests_fname = project + '.toml'
     tests_path = os.path.join('tests', tests_fname)
-    return json_load(tests_path)
+    with open(tests_path) as f:
+        return toml.load(f)
 
 
 def cmd_exec(args, wd=None):
@@ -63,12 +54,14 @@ def cmd_exec_capture(args, wd=None, path=None):
         output = proc.stdout.decode('utf-8')
     return output.rstrip('\n')
 
-def print_green(s, e='\n'):
+
+def print_green(s, e=''):
     print('\033[92m' + s + ' \033[0m', end=e)
 
 
-def print_red(s, e='\n'):
+def print_red(s, e=''):
     print('\033[91m' + s + ' \033[0m', end=e)
+
 
 class Repo:
     def __init__(self, *args, **kwargs):
@@ -136,7 +129,7 @@ class Repo:
             raise Exception(self.label + ' timeout in test ' + test['name'])
 
         # record score for later printing
-        result = {'test': test['name'], 'score': score}
+        result = {'test': test, 'score': score}
         self.results.append(result)
 
 
@@ -153,17 +146,24 @@ class Repo:
         print(self.label, end='')
         for n in range(longest - len(self.label)):
             print(' ', end='')
+
+        earned = 0
+        avail = 0
         for r in self.results:
+            rubric = r['test']['rubric']
+            avail += rubric
             if r['score'] == 0:
-                print_red(r['test'], '')
+                print_red(r['test']['name'])
             else:
-                print_green(r['test'], '')
-        print('')
+                earned += rubric
+                print_green(r['test']['name'])
+
+        print(f"{earned}/{avail}")
 
 
 def main():
     cfg = load_config('config.toml')
-    tests = tests_load(cfg)
+    tests = load_tests(cfg['project'])
     if tests == {} or cfg == {}:
         return -1
 
@@ -203,8 +203,9 @@ def main():
                 repo.test(cfg['project'], tests)
                 repo.print_results(longest)
         except Exception as e:
-            print_red(str(e))
+            print_red(str(e), '\n')
             continue
+
 
 if __name__ == "__main__":
     main()
