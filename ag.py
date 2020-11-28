@@ -6,6 +6,18 @@ import subprocess
 import sys
 import toml
 
+class Config:
+    def __init__(self, d):
+        self.action = d['action']           # required
+        self.credentials = d['credentials'] # required
+        self.digital = d.get('digital')     # optional til Digital projects
+        self.local = d.get('local')         # could get students or local
+        self.org = d['org']                 # required
+        self.project = d['project']         # required
+        self.project_tests = os.path.join(os.getcwd(), 'tests', self.project)
+        self.students = d.get('students')   # could get students or local
+        self.verbose = d['verbose']         # optional, defaults to False
+
 
 def load_config(fname):
     # .toml file contains defaults. Command line args can override
@@ -15,6 +27,8 @@ def load_config(fname):
     p.add_argument('action', type=str, choices=['clone', 'test'])
     p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
         default=defaults.get('credentials', None))
+    p.add_argument('-d', '--digital', help='Path to digital.jar',
+        default=defaults.get('digital', None))
     p.add_argument('-l', '--local', help='Local directory to test',
         default=defaults.get('local', None))
     p.add_argument('-o', '--org', help='Github Classroom Organization', 
@@ -23,14 +37,38 @@ def load_config(fname):
         default=defaults.get('project', None))
     p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs', 
         default=defaults.get('students', None))
-    return vars(p.parse_args())
+    p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
+        default=defaults.get('verbose', False))
+    return Config(vars(p.parse_args()))
 
 
-def load_tests(project):
-    tests_fname = project + '.toml'
-    tests_path = os.path.join('tests', tests_fname)
-    with open(tests_path) as f:
-        return toml.load(f)
+class TestCase:
+    def __init__(self, cfg, d):
+        self.cmd_line = []
+        for i in d['input']:
+            if '$project_tests' in i:
+                param = i.replace('$project_tests', cfg.project_tests)
+            elif '$project' in i:
+                param = i.replace('$project', cfg.project)
+            elif '$digital' in i:
+                param = i.replace('$digital', cfg.digital)
+            else:
+                param = i
+            self.cmd_line.append(param)
+        self.expected = d['expected']
+        self.name = d['name']
+        self.output = d.get('output', 'stdout')
+        self.rubric = d['rubric']
+
+
+def load_tests(cfg):
+    tests_file = os.path.join(cfg.project_tests, cfg.project + '.toml', )
+    with open(tests_file) as f:
+        toml_input = toml.load(f)
+    test_cases = []
+    for t in toml_input['tests']:
+        test_cases.append(TestCase(cfg, t))
+    return test_cases
 
 
 def cmd_exec(args, wd=None):
@@ -64,24 +102,24 @@ def print_red(s, e=''):
 
 
 class Repo:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cfg, **kwargs):
         # calculate the local and remote for this repo
         student = kwargs.get('student')
         if student:
-            cfg = args[0]
-            pg = cfg['project'] + '-' + student
-            self.local = os.path.join('github.com', cfg['org'], pg)
+            pg = cfg.project + '-' + student
+            self.local = os.path.join('github.com', cfg.org, pg)
             # set up remote repo for clone
-            if cfg['credentials'] == 'https':
+            if cfg.credentials == 'https':
                 self.remote = 'https://github.com/'
-            elif cfg['credentials'] == 'ssh':
+            elif cfg.credentials == 'ssh':
                 self.remote = 'git@github.com:/'
-            self.remote += cfg['org'] + '/' + pg + '.git'
+            self.remote += cfg.org + '/' + pg + '.git'
         # allow -l/--local to override the local directory calculated above
         if kwargs.get('local'):
             self.local = kwargs['local'].rstrip('/')
         self.label = self.local.split('/')[-1]
         self.results = []
+        self.verbose = cfg.verbose
 
 
     def clone(self):
@@ -93,53 +131,33 @@ class Repo:
 
 
     def build(self):
-        if not os.path.isdir(self.local):
-            raise Exception(self.label + ' no repo to build')
         return cmd_exec_rc(['make', '-C', self.local])
 
 
-    def test_one(self, executable, tests_dir, test):
-        # build list of command line arguments, replacing the sentinel value $project_tests if it occurs
-        args = [i.replace('$project_tests', tests_dir) for i in test['input']]
-        args.insert(0, executable)
-
-        # check to see if the test needs to be run in the repo dir
-        run_in_repo = test.get('run_in_repo')
-        wd = repo['path'] + '/' if run_in_repo else None
-
-        if type(test['expected']) == list:
-            # join them to match what we get from subprocess
-            expected = '\n'.join(test['expected'])
-        else: 
-            expected = test['expected']
-
+    def test_one(self, test):
         score = 0
-        try:
-            output_file = test.get('output', 'stdout')
-            if output_file == 'stdout':
-                # get actual output from stdout
-                actual = cmd_exec_capture(args, wd)
-            else:
-                # ignore stdout and get actual output from the specified file
-                path = os.path.join(self.local, output_file)
-                actual = cmd_exec_capture(args, wd, path)
-            if actual.lower() == expected.lower():
-                score = test['rubric']
-        except subprocess.TimeoutExpired:
-            raise Exception(self.label + ' timeout in test ' + test['name'])
+        if test.output == 'stdout':
+            # get actual output from stdout
+            actual = cmd_exec_capture(test.cmd_line, self.local)
+        else:
+            # ignore stdout and get actual output from the specified file
+            path = os.path.join(self.local, test.output)
+            actual = cmd_exec_capture(test.cmd_line, self.local, path)
+
+        if self.verbose:
+            print('Actual: ' + actual)
+            print('Expected: ' + test.expected)
+        if actual.lower().strip('\n') == test.expected.lower().strip('\n'):
+            score = test.rubric
 
         # record score for later printing
         result = {'test': test, 'score': score}
         self.results.append(result)
 
 
-    def test(self, project, tests):
-        executable = os.path.join(self.local, project)
-        if not os.path.isfile(executable):
-            raise Exception(self.label + ' no executable to test')
-        tests_dir = os.path.join(os.getcwd(), 'tests', project)
-        for test in tests['tests']:
-            self.test_one(executable, tests_dir, test)
+    def test(self, project, test_cases):
+        for tc in test_cases:
+            self.test_one(tc)
 
 
     def print_results(self, longest):
@@ -150,35 +168,34 @@ class Repo:
         earned = 0
         avail = 0
         for r in self.results:
-            rubric = r['test']['rubric']
+            rubric = r['test'].rubric
             avail += rubric
             if r['score'] == 0:
-                print_red(r['test']['name'])
+                print_red(r['test'].name)
             else:
                 earned += rubric
-                print_green(r['test']['name'])
+                print_green(r['test'].name)
 
         print(f"{earned}/{avail}")
 
 
 def main():
     cfg = load_config('config.toml')
-    tests = load_tests(cfg['project'])
+    tests = load_tests(cfg)
     if tests == {} or cfg == {}:
         return -1
 
     # Build list of repos to run, either from local or list of students
     repos = []
-    if cfg.get('local'):
+    if cfg.local:
         # One local repo
-        d = cfg['local']
-        if not os.path.isdir(d):
-            raise Exception(d + ' is not a directory')
-        repo = Repo(cfg, local=d)
+        if not os.path.isdir(cfg.local):
+            raise Exception(cfg.local + ' is not a directory')
+        repo = Repo(cfg, local=cfg.local)
         repos.append(repo)
-    elif cfg.get('students'):
+    elif cfg.students:
         # Make repo list from student list
-        for s in cfg['students']:
+        for s in cfg.students:
             repo = Repo(cfg, student=s)
             repos.append(repo)
     else:
@@ -196,14 +213,14 @@ def main():
     # Run all of the repos, either clone or test
     for repo in repos:
         try:
-            if cfg['action'] == 'clone':
+            if cfg.action == 'clone':
                 repo.clone()
-            elif cfg['action'] == 'test':
+            elif cfg.action == 'test':
                 repo.build()
-                repo.test(cfg['project'], tests)
+                repo.test(cfg.project, tests)
                 repo.print_results(longest)
         except Exception as e:
-            print_red(str(e), '\n')
+            print_red(repo.label + ' ' + str(e), '\n')
             continue
 
 

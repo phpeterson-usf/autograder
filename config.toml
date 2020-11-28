@@ -1,4 +1,5 @@
 credentials = "ssh"
+digital = "/mnt/c/Users/usf/Documents/Digital/digital.jar"
 org = "cs-315-03-20f"
 project = "project02"
 students = [
