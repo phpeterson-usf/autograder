@@ -17,7 +17,7 @@ factorial: passed
 rubric = 10
 
 [[tests]]
-name = "factorial"
+name = "sum-array"
 input = ["java", "-cp", "$digital", "CLI", "test", "$project.dig", "-tests", "$project_tests/sum-array.dig"]
 expected = """
 Use default settings!
