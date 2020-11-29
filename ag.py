@@ -18,28 +18,27 @@ class Config:
         self.students = d.get('students')   # could get students or local
         self.verbose = d['verbose']         # optional, defaults to False
 
-
-def load_config(fname):
-    # .toml file contains defaults. Command line args can override
-    with open(fname) as f:
-        defaults = toml.load(f)
-    p = argparse.ArgumentParser()
-    p.add_argument('action', type=str, choices=['clone', 'test'])
-    p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
-        default=defaults.get('credentials', None))
-    p.add_argument('-d', '--digital', help='Path to digital.jar',
-        default=defaults.get('digital', None))
-    p.add_argument('-l', '--local', help='Local directory to test',
-        default=defaults.get('local', None))
-    p.add_argument('-o', '--org', help='Github Classroom Organization', 
-        default=defaults.get('org', None))
-    p.add_argument('-p', '--project', help='Project name', 
-        default=defaults.get('project', None))
-    p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs', 
-        default=defaults.get('students', None))
-    p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
-        default=defaults.get('verbose', False))
-    return Config(vars(p.parse_args()))
+    def parse_args(fname):
+        # .toml file contains defaults. Command line args can override
+        with open(fname) as f:
+            defaults = toml.load(f)
+        p = argparse.ArgumentParser()
+        p.add_argument('action', type=str, choices=['clone', 'test'])
+        p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
+            default=defaults.get('credentials', None))
+        p.add_argument('-d', '--digital', help='Path to digital.jar',
+            default=defaults.get('digital', None))
+        p.add_argument('-l', '--local', help='Local directory to test',
+            default=defaults.get('local', None))
+        p.add_argument('-o', '--org', help='Github Classroom Organization',
+            default=defaults.get('org', None))
+        p.add_argument('-p', '--project', help='Project name',
+            default=defaults.get('project', None))
+        p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
+            default=defaults.get('students', None))
+        p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
+            default=defaults.get('verbose', False))
+        return vars(p.parse_args())
 
 
 class TestCase:
@@ -155,7 +154,7 @@ class Repo:
         self.results.append(result)
 
 
-    def test(self, project, test_cases):
+    def test(self, test_cases):
         for tc in test_cases:
             self.test_one(tc)
 
@@ -180,10 +179,9 @@ class Repo:
 
 
 def main():
-    cfg = load_config('config.toml')
-    tests = load_tests(cfg)
-    if tests == {} or cfg == {}:
-        return -1
+    args = Config.parse_args('config.toml')
+    cfg = Config(args)
+    test_cases = load_tests(cfg)
 
     # Build list of repos to run, either from local or list of students
     repos = []
@@ -217,7 +215,7 @@ def main():
                 repo.clone()
             elif cfg.action == 'test':
                 repo.build()
-                repo.test(cfg.project, tests)
+                repo.test(test_cases)
                 repo.print_results(longest)
         except Exception as e:
             print_red(repo.label + ' ' + str(e), '\n')
