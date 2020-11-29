@@ -25,9 +25,6 @@ For less typing you can make the autograder python program executable:
 You can test your project like this:
 <pre><code>$ ./ag.py test --local ~/project02-jsmith
 </code></pre>
-If you use ssh to connect to Github, you can add that to `config.toml`
-<pre><code>credentials = "ssh"
-</code></pre>
 ## Usage for instructors
 1. Test cases for each project are expressed in TOML, as you can see in the `tests/` directory
 1. Conventionally, the executable name and the project name are the same, 
@@ -48,9 +45,8 @@ the name of your project.
         expected = "0x0000000A"
         rubric = 5</code></pre>
 1. Note that this usage of `$project` is flexible enough for projects which are run using an interpreter like Java or Python
-        <pre><code>
-        [[tests]]
-        input = ["java", "-cp", ".", "$project.jar"]
+        <pre><code>[[tests]]
+        input = ["java", "-cp", "$project.jar"]
         </code></pre>
 1. Test cases can have input files in your tests/ directory using the keyword `$project_tests`, which will be 
 substituted for `tests/$project/`. In this example, substitution gives the input file as `tests/project02/testinput.txt`
@@ -82,7 +78,7 @@ simulation tool called [Digital](https://github.com/hneemann/Digital)
 using pre-defined inputs and outputs. See Digital's documentation. 
 1. Autograder leverages its ability to loop over the student repos, using Java and Digital's test case components, looking
 for a passing report from Digital
-1. Examples of Digital test cases combined with autograder test cases are available [here](https://github.com/phpeterson-usf/autograder/tests/project06/)
+1. Examples of Digital test cases combined with autograder test cases are available [here](https://github.com/phpeterson-usf/autograder/tree/main/tests/project06)
 1. Since autograder needs to know where Digital's JAR file lives,
 there is a configuration for that path in `config.toml`, in your platform's native format
         <pre><code>digital = "/home/me/Digital/digital.jar"
@@ -90,11 +86,10 @@ there is a configuration for that path in `config.toml`, in your platform's nati
 
 ## Autograder config/command line flags
 I intended autograder to be simple, but along the way of supporting the use cases I needed, I added these flags, which can be given on the command line, or in `config.toml`
-        <pre><code>-c/--credentials [https | ssh] https is the default
-        -d/--digital is the path to Digital's JAR file
-        -l/--local is the path to the local repo to test
-        -o/--org is the Github Classroom Organization 
-        -p/--project is the name of the project, which is substituted into repo names and test case inputs
-        -s/--students is a list of student Github IDs (no punctuation needed)
-        -v/--verbose shows some of what autograder is doing
-        </code></pre>
+* `-c/--credentials` [https | ssh] https is the default
+* `-d/--digital` is the path to Digital's JAR file
+* `-l/--local` is the path to the local repo to test
+* `-o/--org` is the Github Classroom Organization 
+* `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
+* `-s/--students` is a list of student Github IDs (no punctuation needed)
+* `-v/--verbose` shows some of what autograder is doing
