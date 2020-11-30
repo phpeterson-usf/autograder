@@ -2,9 +2,41 @@
 
 import argparse
 import os
+import string
 import subprocess
 import sys
 import toml
+
+
+def cmd_exec(args, wd=None):
+    return subprocess.run(args, capture_output=True, timeout=10, cwd=wd)
+
+
+def cmd_exec_rc(args):
+    proc = cmd_exec(args)
+    return proc.returncode
+
+
+def cmd_exec_capture(args, wd=None, path=None):
+    proc = cmd_exec(args, wd)
+    if (path):
+        # capture output written to path
+        f = open(path, 'r')
+        output = f.read()
+        f.close()
+    else:
+        # capture output written to stdout
+        output = proc.stdout.decode('utf-8')
+    return output.rstrip('\n')
+
+
+def print_green(s, e=''):
+    print('\033[92m' + s + ' \033[0m', end=e)
+
+
+def print_red(s, e=''):
+    print('\033[91m' + s + ' \033[0m', end=e)
+
 
 class Config:
     def __init__(self, d):
@@ -42,6 +74,7 @@ class Config:
 
 
 class TestCase:
+    trans_table = str.maketrans(dict.fromkeys(string.whitespace))
     def __init__(self, cfg, d):
         self.cmd_line = []
         for i in d['input']:
@@ -58,6 +91,27 @@ class TestCase:
         self.name = d['name']
         self.output = d.get('output', 'stdout')
         self.rubric = d['rubric']
+        self.verbose = cfg.verbose
+
+
+    def get_actual(self, local):
+        if self.output == 'stdout':
+            # get actual output from stdout
+            return cmd_exec_capture(self.cmd_line, local)
+        else:
+            # ignore stdout and get actual output from the specified file
+            path = os.path.join(local, self.output)
+            return cmd_exec_capture(self.cmd_line, local, path)
+
+
+    def match_expected(self, actual):
+        # compare case-insensitive, ignoring whitespace
+        # I'm queasy about ignoring whitespace, but it is what maketest did
+        loose_act = actual.lower().translate(TestCase.trans_table)
+        loose_exp = self.expected.lower().translate(TestCase.trans_table)
+        if self.verbose:
+            print(f"actual\n{loose_act}\nexpected\n{loose_exp}")
+        return loose_act == loose_exp
 
 
 def load_tests(cfg):
@@ -68,36 +122,6 @@ def load_tests(cfg):
     for t in toml_input['tests']:
         test_cases.append(TestCase(cfg, t))
     return test_cases
-
-
-def cmd_exec(args, wd=None):
-    return subprocess.run(args, capture_output=True, timeout=2, cwd=wd)
-
-
-def cmd_exec_rc(args):
-    proc = cmd_exec(args)
-    return proc.returncode
-
-
-def cmd_exec_capture(args, wd=None, path=None):
-    proc = cmd_exec(args, wd)
-    if (path):
-        # capture output written to path
-        f = open(path, 'r')
-        output = f.read()
-        f.close()
-    else:
-        # capture output written to stdout
-        output = proc.stdout.decode('utf-8')
-    return output.rstrip('\n')
-
-
-def print_green(s, e=''):
-    print('\033[92m' + s + ' \033[0m', end=e)
-
-
-def print_red(s, e=''):
-    print('\033[91m' + s + ' \033[0m', end=e)
 
 
 class Repo:
@@ -126,6 +150,7 @@ class Repo:
             raise Exception(self.label + ' no remote to clone')
         if os.path.isdir(self.local):
             return 0  # don't ask git to clone if local already exists
+        print(self.local)
         return cmd_exec_rc(['git', 'clone', self.remote, self.local])
 
 
@@ -133,24 +158,14 @@ class Repo:
         return cmd_exec_rc(['make', '-C', self.local])
 
 
-    def test_one(self, test):
+    def test_one(self, test_case):
         score = 0
-        if test.output == 'stdout':
-            # get actual output from stdout
-            actual = cmd_exec_capture(test.cmd_line, self.local)
-        else:
-            # ignore stdout and get actual output from the specified file
-            path = os.path.join(self.local, test.output)
-            actual = cmd_exec_capture(test.cmd_line, self.local, path)
-
-        if self.verbose:
-            print('Actual: ' + actual)
-            print('Expected: ' + test.expected)
-        if actual.lower().strip('\n') == test.expected.lower().strip('\n'):
-            score = test.rubric
+        actual = test_case.get_actual(self.local)
+        if test_case.match_expected(actual):
+            score = test_case.rubric
 
         # record score for later printing
-        result = {'test': test, 'score': score}
+        result = {'test': test_case, 'score': score}
         self.results.append(result)
 
 
