@@ -20,10 +20,13 @@ def cmd_exec_rc(args):
 def cmd_exec_capture(args, wd=None, path=None):
     proc = cmd_exec(args, wd)
     if (path):
-        # capture output written to path
-        f = open(path, 'r')
-        output = f.read()
-        f.close()
+        try:
+            # capture output written to path
+            f = open(path, 'r')
+            output = f.read()
+            f.close()
+        except FileNotFoundError:
+            return ''
     else:
         # capture output written to stdout
         output = proc.stdout.decode('utf-8')
