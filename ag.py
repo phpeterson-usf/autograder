@@ -50,7 +50,8 @@ class Config:
         self.local = d.get('local')         # could get students or local
         self.org = d['org']                 # required
         self.project = d['project']         # required
-        self.testspath = d.get('testspath')
+        self.ioprint = d['ioprint']          # optional
+        self.testspath = d.get('testspath') # required
         self.project_tests = os.path.join(self.testspath, 'tests', self.project)        
         self.students = d.get('students')   # could get students or local
         self.verbose = d['verbose']         # optional, defaults to False
@@ -84,17 +85,19 @@ class Config:
         with open(config_file_path) as f:
             defaults = toml.load(f)
         p = argparse.ArgumentParser()
-        p.add_argument('action', type=str, choices=['clone', 'test'])
+        p.add_argument('action', type=str, choices=['class', 'clone', 'test'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', None))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
             default=defaults.get('digital', None))
         p.add_argument('-l', '--local', help='Local directory to test',
-            default=defaults.get('local', None))
+            default=defaults.get('local', '.'))
         p.add_argument('-o', '--org', help='Github Classroom Organization',
             default=defaults.get('org', None))
         p.add_argument('-p', '--project', help='Project name',
             default=defaults.get('project', None))
+        p.add_argument('-i', '--ioprint', action='store_true', help='Print input and output',
+            default=defaults.get('print', False))
         p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
             default=defaults.get('students', None))
         p.add_argument('-t', '--testspath', help='Path to tests',
@@ -123,6 +126,7 @@ class TestCase:
         self.output = d.get('output', 'stdout')
         self.rubric = d['rubric']
         self.verbose = cfg.verbose
+        self.ioprint = cfg.ioprint
 
 
     def get_actual(self, local):
@@ -142,6 +146,8 @@ class TestCase:
         loose_exp = self.expected.lower().translate(TestCase.trans_table)
         if self.verbose:
             print(f"actual\n{loose_act}\nexpected\n{loose_exp}")
+        if self.ioprint:
+            print(f"$ {' '.join(self.cmd_line)}\n{actual}")
         return loose_act == loose_exp
 
 
@@ -231,7 +237,7 @@ def main():
 
     # Build list of repos to run, either from local or list of students
     repos = []
-    if cfg.local:
+    if cfg.action == 'test':
         # One local repo
         if not os.path.isdir(cfg.local):
             raise Exception(cfg.local + ' is not a directory')
@@ -243,7 +249,7 @@ def main():
             repo = Repo(cfg, student=s)
             repos.append(repo)
     else:
-        print('no local directory or students specified')
+        print("Must either 'test' one repo, or give a list of students to 'clone' or 'class'")
         return -1
 
     # Calc column width for justified printing
@@ -259,7 +265,7 @@ def main():
         try:
             if cfg.action == 'clone':
                 repo.clone()
-            elif cfg.action == 'test':
+            elif cfg.action == 'class' or cfg.action == 'test':
                 repo.build()
                 repo.test(test_cases)
                 repo.print_results(longest)
