@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import pathlib
 import string
 import subprocess
 import sys
@@ -49,13 +50,38 @@ class Config:
         self.local = d.get('local')         # could get students or local
         self.org = d['org']                 # required
         self.project = d['project']         # required
-        self.project_tests = os.path.join(os.getcwd(), 'tests', self.project)
+        self.testspath = d.get('testspath')
+        self.project_tests = os.path.join(self.testspath, 'tests', self.project)        
         self.students = d.get('students')   # could get students or local
         self.verbose = d['verbose']         # optional, defaults to False
 
     def parse_args(fname):
+        # Check to see if ~/.config/grade/config.toml exits
+        # Create if it does not exit
+        # Create path if needed
+        home = str(pathlib.Path.home())
+        config_path = home + '/.config/grade'
+        config_file_path = pathlib.Path(config_path + '/config.toml')
+        if not config_file_path.exists():
+            pathlib.Path(config_path).mkdir(parents=True, exist_ok=True)
+            with open(config_file_path, 'w') as f:
+                f.write('# Default config.toml\n')
+                f.write('# credentials = "ssh"\n')
+                f.write('# credentials = "http"\n')                
+                f.write('# digital = "path_to_Digital.jar"\n')
+                f.write('# org = "github_org_name"\n')
+                f.write('# project = "default_project_name"\n')
+                f.write('# students = [\n')
+                f.write('#     "github_id_1",\n')
+                f.write('#     "github_id_2",\n')
+                f.write('#     "github_id_3"\n')
+                f.write('# ]\n')
+                f.write('# testspath = "path_to_tests"\n')
+                f.write('# verbose = false\n')
+                f.write('# verbose = true\n')
+                            
         # .toml file contains defaults. Command line args can override
-        with open(fname) as f:
+        with open(config_file_path) as f:
             defaults = toml.load(f)
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=['clone', 'test'])
@@ -71,6 +97,8 @@ class Config:
             default=defaults.get('project', None))
         p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
             default=defaults.get('students', None))
+        p.add_argument('-t', '--testspath', help='Path to tests',
+            default=defaults.get('testspath', '.'))
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
             default=defaults.get('verbose', False))
         return vars(p.parse_args())
