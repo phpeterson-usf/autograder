@@ -1,0 +1,23 @@
+[[tests]]
+name = "01"
+input = ["./$project", "-e", "1 + 1"]
+expected = "2"
+rubric = 5
+
+[[tests]]
+name = "02"
+input = ["./$project", "-e", "10", "-b", "16"]
+expected = "0x0000000A"
+rubric = 5
+
+[[tests]]
+name = "03"
+input = ["./$project", "-e", "10 + 1"]
+expected = "11"
+rubric = 5
+
+[[tests]]
+name = "04"
+input = ["./$project", "-e", "10 + 1", "-b", "16"]
+expected = "0x0000000B"
+rubric = 5
