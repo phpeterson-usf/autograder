@@ -145,7 +145,8 @@ class TestCase:
         loose_act = actual.lower().translate(TestCase.trans_table)
         loose_exp = self.expected.lower().translate(TestCase.trans_table)
         if self.verbose:
-            print(f"actual\n{loose_act}\nexpected\n{loose_exp}")
+            #print(f"actual\n{loose_act}\nexpected\n{loose_exp}")
+            print(f"===[{self.name}]===actual\n{actual}\n===[{self.name}]===expected\n{self.expected}")
         if self.ioprint:
             print(f"$ {' '.join(self.cmd_line)}\n{actual}")
         return loose_act == loose_exp
