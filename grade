@@ -52,7 +52,7 @@ class Config:
         self.project = d['project']         # required
         self.ioprint = d['ioprint']          # optional
         self.testspath = d.get('testspath') # required
-        self.project_tests = os.path.join(self.testspath, 'tests', self.project)        
+        self.project_tests = os.path.join(self.testspath, self.project)        
         self.students = d.get('students')   # could get students or local
         self.verbose = d['verbose']         # optional, defaults to False
 
