@@ -1,5 +1,5 @@
 # autograder
-Autograder is a tool for Computer Science students and instructors to test student projects for correctness. Its features include:
+`grade` is a tool for Computer Science students and instructors to test student projects for correctness. Its features include:
 1. Clone all student repos based on a list of Github IDs
 1. Build all student repos using `make`
 1. Run all student repos against instructor-provided input files
@@ -12,28 +12,45 @@ Autograder is a tool for Computer Science students and instructors to test stude
 1. Requires [TOML](https://toml.io/en/) python module
         <pre><code>$ pip3 install toml</code></pre>
 
-## Basic Usage
-1. `clone` and `test` are the basic actions Autograder can perform. One of those actions must be provided on the command line.
-1. You will need a file called `config.toml` which contains the Github Classroom organization
-name and the project name for the current project want to test. 
+## Installation
+1. Clone the `autograder` repo
         <pre><code>$ cd ~
-        $ git clone https://github.com/phpeterson-usf/autograder.git
-        $ cd autograder
-        $ cat > config.toml
-        org = "cs-315-03-20f"
-        project = "project02"
-        ^D
+        $ git clone git@github.com:/phpeterson-usf/autograder.git
         </code></pre>
-1. For less typing you can make the autograder python program executable
-        <pre><code>$ chmod +x ag.py
+1. Add the directory to your path in `~/.bashrc`
+        <pre><code>export PATH=~/autograder/:$PATH</code></pre>
+1. Clone your class's `tests` repo. Use the right one for your class - these are just examples.
+        <pre><code>$ cd ~
+        $ git clone git@github.com:/cs315-21s/tests.git
+        $ git clone git@github.com:/USF-CS631-S21/tests.git</code></pre>
+1. Run the `grade` script once and it will create a config file in `~/.config/grade`. Edit this so it contains the following pieces of information:
+   1. The authentication you use for GitHub: ssh or http
+   1. The Github Classroom organization for your class
+   1. The path to your `tests` repo, e.g. `/home/pi`
+        <pre><code>credentials = "ssh"
+      org = "cs315-21s"
+      testpath = "/home/pi"</code></pre>
+
+## Usage for Students
+1. You can test a project in the current directory like this
+        <pre><code>$ cd ~/project02-phpeterson-usf
+        $ grade test --project project02
         </code></pre>
-1. You can test your project like this
-        <pre><code>$ ./ag.py test --local ~/project02-jsmith
-        </code></pre>
-1. Each test case can pass or fail. The score is shown as the total earned/total available, based on the `rubric` field in each test case
+
+## Usage for Instructors
+1. Add a list of students in `~/.config/grade/config.toml`
+        <pre><code>students = [
+                "phpeterson-usf",
+                "gdbenson",
+        ]</code></pre>
+1. You can clone all of your students repos to your machine. `grade` will create `./github.com/` in the current working directory, with subdirectories for your organization and student repos
+        <pre><code>$ grade clone</code></pre>
+1.  After developing test cases for your projects (see below), you can test all of your students' repos in batch
+        <pre><code>$ grade class</code></pre>
 
 ## Test Cases
-1. Test cases for each project are expressed in TOML, as you can see in the `tests/` directory
+1. Instructors can create a repo in the Github Classroom Organization which contains the tests for that class. Students will clone and pull this repo.
+1. Test cases for each project are expressed in TOML, as you can see in the `example_tests/` directory here
 1. Test case inputs are a list of strings for each command-line flag and value. The keyword `$project` will be substituted for
 the name of your project. 
 	<pre><code> $ cat project02.toml
@@ -52,8 +69,8 @@ the name of your project.
         <pre><code>[[tests]]
         input = ["python3", "$project.py"]
         </code></pre>
-1. Test cases can have input files in your `tests/` directory using the keyword `$project_tests`, which will be 
-substituted for `tests/$project/`. In this example, substitution gives the input file as `tests/project02/testinput.txt`
+1. Test cases can have input files in your `tests` repo using the keyword `$project_tests`, which will be 
+substituted for `$testspath/$project/`. In this example, substitution gives the input file as `$testspath/project02/testinput.txt`
         <pre><code>[[tests]]
         name = "03"
         input = ["./$project", "$project_tests/testinput.txt"]
@@ -69,29 +86,34 @@ substituted for `tests/$project/`. In this example, substitution gives the input
  1. You can add a list of students Github IDs to `config.toml`
         <pre><code>$ cat config.toml
         credentials="https"
-        org = cs-315-03-20f"
+        org = "cs315-21s"
         project = "project02"
         students = [
-            "phpeterson-usf",
-            "gdbenson",
+                "phpeterson-usf",
+                "gdbenson",
         ]
         </code></pre>
-1. Autograder can loop over the list of students to clone and test (assuming parameters are given in `config.toml`)
-        <pre><code>$ ./ag clone
-        $ ./ag.py test
+1. `grade` can loop over the list of students to clone and test (assuming parameters are given in `config.toml`)
+        <pre><code>$ grade clone
+        github.com/cs315-21s/project02-phpeterson-usf
+        github.com/cs315-21s/project02-gdbenson
+        $ grade class
         project02-phpeterson-usf 01 02 10/10
         project02-gdbenson       01 02 10/10
         </code></pre>
+1. Each test case can pass or fail. The score is shown as the total earned/total available, based on the `rubric` field in each test case
 
 ## Parameters
-1. Autograder supports these parameters, which can be given on the command line, or in `config.toml`, for less typing. 
+1. `grade` supports these parameters, which can be given on the command line, or in `~/.config/grade/config.toml`, for less typing. 
 1. The syntax in `config.toml` just uses the name, without dashes, as shown at the top of this README
-1. The command-line format is argparse-style, with no "="
-        <pre><code>$ ./ag.py test -p project02 -l ~/project02-jsmith</code></pre>
+1. The command-line format is argparse-style, with no "=". These two commands are equivalent:
+        <pre><code>$ cd ~/project02-jsmith
+        $ grade test -p project02
+        $ grade test --project project02</code></pre>
 1. Parameters given on the command line override those given in `config.toml`
 * `-c/--credentials` [https | ssh] https is the default
 * `-d/--digital` is the path to Digital's JAR file
-* `-l/--local` is the path to the local repo to test
+* `-i/--ioprint` prints inputs and outputs to help write project specs
 * `-o/--org` is the Github Classroom Organization 
 * `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
 * `-s/--students` is a list of student Github IDs (no punctuation needed)
@@ -99,9 +121,9 @@ substituted for `tests/$project/`. In this example, substitution gives the input
 
 ## Using Digital
 1. [Digital](https://github.com/hneemann/Digital) has test case components which can test a circuit using pre-defined inputs and outputs. See Digital's documentation for scripted testing examples.
-1. Autograder leverages its ability to loop over the student repos, using Java and Digital's test case components, looking
+1. `grade` leverages its ability to loop over the student repos, using Java and Digital's test case components, looking
 for a passing report from Digital
 1. Examples of Digital test cases combined with autograder test cases are available [here](https://github.com/phpeterson-usf/autograder/tree/main/tests/project06)
-1. Autograder needs to know where Digital's JAR file lives. There is a configuration for that path in `config.toml`, in your platform's native format
+1. `grade` needs to know where Digital's JAR file lives. There is a configuration for that path in `config.toml`, in your platform's native format
         <pre><code>digital = "/home/me/Digital/digital.jar"
         </code></pre>
