@@ -29,7 +29,7 @@
    1. The path to your `tests` repo, e.g. `/home/pi`
         <pre><code>credentials = "ssh"
       org = "cs315-21s"
-      testpath = "/home/pi/cs315-21s/tests"</code></pre>
+      testpath = "/home/pi/tests"</code></pre>
 
 ## Usage for Students
 1. You can test a project in the current directory like this
