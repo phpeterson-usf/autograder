@@ -7,10 +7,12 @@
 1. Integration with the [Digital](https://github.com/hneemann/Digital) circuit simulation tool
 
 ## Requirements
-1. Requires python3 
-        <pre><code>$ sudo apt install python3.8 python3-pip</pre></code>
+1. Requires python 3.7 or later. Python 3.7.3 is the current version on Raspberry Pi OS
 1. Requires [TOML](https://toml.io/en/) python module
-        <pre><code>$ pip3 install toml</code></pre>
+        ```
+        $ sudo apt install python3-pip
+        $ pip3 install toml
+        ```
 
 ## Installation
 1. Clone the `autograder` repo
