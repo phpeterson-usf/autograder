@@ -9,10 +9,10 @@
 ## Requirements
 1. Requires python 3.7 or later. Python 3.7.3 is the current version on Raspberry Pi OS
 1. Requires [TOML](https://toml.io/en/) python module
-        ```
-        $ sudo apt install python3-pip
-        $ pip3 install toml
-        ```
+```
+$ sudo apt install python3-pip
+$ pip3 install toml
+```
 
 ## Installation
 1. Clone the `autograder` repo
