@@ -123,6 +123,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 * `-c/--credentials` [https | ssh] https is the default
 * `-d/--digital` is the path to Digital's JAR file
 * `-i/--ioprint` prints inputs and outputs to help write project specs
+* `-n/--name` runs one named test case, rather than all of them
 * `-o/--org` is the Github Classroom Organization 
 * `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
 * `-s/--students` is a list of student Github IDs (no punctuation needed)
