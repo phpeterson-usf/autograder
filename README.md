@@ -33,7 +33,7 @@
     $ git clone git@github.com:/USF-CS631-S21/tests.git
     ``` 
 1. Run the `grade` script once and it will create a config file in `~/.config/grade`. Edit this so it contains the following pieces of information:
-   1. The authentication you use for GitHub: ssh or http
+   1. The authentication you use for GitHub: ssh or https
    1. The Github Classroom organization for your class
    1. The path to your tests repo
         ```
