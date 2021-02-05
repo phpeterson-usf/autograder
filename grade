@@ -54,6 +54,7 @@ class Config:
         self.testspath = d.get('testspath') # required
         self.project_tests = os.path.join(self.testspath, self.project)        
         self.students = d.get('students')   # could get students or local
+        self.test_name = d['name']          # optional
         self.verbose = d['verbose']         # optional, defaults to False
 
     def parse_args(fname):
@@ -92,6 +93,8 @@ class Config:
             default=defaults.get('digital', None))
         p.add_argument('-l', '--local', help='Local directory to test',
             default=defaults.get('local', '.'))
+        p.add_argument('-n', '--name', help='Run test case with this name',
+            default=defaults.get('test_name', None))
         p.add_argument('-o', '--org', help='Github Classroom Organization',
             default=defaults.get('org', None))
         p.add_argument('-p', '--project', help='Project name',
@@ -207,9 +210,14 @@ class Repo:
         self.results.append(result)
 
 
-    def test(self, test_cases):
-        for tc in test_cases:
-            self.test_one(tc)
+    def test(self, test_cases, test_name):
+        if test_name is not None:
+            for tc in test_cases:
+                if tc.name == test_name:
+                    self.test_one(tc)
+        else:
+            for tc in test_cases:
+                self.test_one(tc)
 
 
     def print_results(self, longest):
@@ -268,7 +276,7 @@ def main():
                 repo.clone()
             elif cfg.action == 'class' or cfg.action == 'test':
                 repo.build()
-                repo.test(test_cases)
+                repo.test(test_cases, cfg.test_name)
                 repo.print_results(longest)
         except Exception as e:
             print_red(repo.label + ' ' + str(e), '\n')
