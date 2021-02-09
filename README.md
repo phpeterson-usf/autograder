@@ -24,7 +24,7 @@
     ```
 1. Add the directory to your path in `~/.bashrc`
     ```
-    export PATH = ~/autograder/:$PATH
+    export PATH=~/autograder/:$PATH
     ```
 1. Clone your class's tests repo. Use the right one for your class - these are just examples.
     ```
