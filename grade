@@ -147,11 +147,12 @@ class TestCase:
         # I'm queasy about ignoring whitespace, but it is what maketest did
         loose_act = actual.lower().translate(TestCase.trans_table)
         loose_exp = self.expected.lower().translate(TestCase.trans_table)
+        cmd_line_str = ' '.join(self.cmd_line)
         if self.verbose:
-            #print(f"actual\n{loose_act}\nexpected\n{loose_exp}")
-            print(f"===[{self.name}]===actual\n{actual}\n===[{self.name}]===expected\n{self.expected}")
+            print(f"===[{self.name}]===actual\n$ {cmd_line_str}\n{actual}")
+            print(f"===[{self.name}]===expected\n$ {cmd_line_str}\n{self.expected}")
         if self.ioprint:
-            print(f"$ {' '.join(self.cmd_line)}\n{actual}")
+            print(f"$ {cmd_line_str}\n{actual}")
         return loose_act == loose_exp
 
 
