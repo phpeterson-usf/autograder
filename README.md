@@ -38,7 +38,7 @@
    1. The path to your tests repo
         ```
         credentials = "ssh"
-        testpath = "/home/pi/tests"
+        testspath = "/home/pi/tests"
         ```
 
 ## Usage for Students
