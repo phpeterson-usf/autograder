@@ -9,6 +9,11 @@ import sys
 import toml
 
 
+def fatal(s):
+    print(s)
+    sys.exit(-1)
+
+
 def cmd_exec(args, wd=None):
     return subprocess.run(args, capture_output=True, timeout=10, cwd=wd)
 
@@ -42,6 +47,14 @@ def print_red(s, e=''):
     print('\033[91m' + s + ' \033[0m', end=e)
 
 
+def load_toml(fname):
+    with open(fname) as f:
+        try:
+            return toml.load(f)
+        except Exception as e:
+            fatal(f'{fname}: {e}')
+
+
 class Config:
     def __init__(self, d):
         self.action = d['action']           # required
@@ -56,6 +69,14 @@ class Config:
         self.students = d.get('students')   # could get students or local
         self.test_name = d['name']          # optional
         self.verbose = d['verbose']         # optional, defaults to False
+
+
+    def validate_args(d):
+        if d['testspath'] is None:
+            fatal('testspath not given in config or command line')
+        if d['project'] is None:
+            fatal('project not given in config or command line')
+
 
     def parse_args(fname):
         # Check to see if ~/.config/grade/config.toml exits
@@ -81,10 +102,9 @@ class Config:
                 f.write('# testspath = "path_to_tests"\n')
                 f.write('# verbose = false\n')
                 f.write('# verbose = true\n')
-                            
+
         # .toml file contains defaults. Command line args can override
-        with open(config_file_path) as f:
-            defaults = toml.load(f)
+        defaults = load_toml(config_file_path)
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=['class', 'clone', 'test'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
@@ -104,15 +124,19 @@ class Config:
         p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
             default=defaults.get('students', None))
         p.add_argument('-t', '--testspath', help='Path to tests',
-            default=defaults.get('testspath', '.'))
+            default=defaults.get('testspath', None))
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
             default=defaults.get('verbose', False))
-        return vars(p.parse_args())
+        
+        d = vars(p.parse_args())
+        Config.validate_args(d)
+        return d
 
 
 class TestCase:
     trans_table = str.maketrans(dict.fromkeys(string.whitespace))
     def __init__(self, cfg, d):
+        self.validate(d)
         self.cmd_line = []
         for i in d['input']:
             if '$project_tests' in i:
@@ -124,12 +148,22 @@ class TestCase:
             else:
                 param = i
             self.cmd_line.append(param)
-        self.expected = d['expected']
-        self.name = d['name']
+        self.expected = d.get('expected', None)
+        self.name = d.get('name', None)
         self.output = d.get('output', 'stdout')
-        self.rubric = d['rubric']
+        self.rubric = d.get('rubric', None)
         self.verbose = cfg.verbose
         self.ioprint = cfg.ioprint
+
+
+    def validate(self, d):
+        test_name = d.get('name', 'unknown')
+        if type(d.get('rubric')) is not int:
+            fatal('Rubric for test \"{test_name}\" must be an integer')
+        if type(d.get('input')) is not list:
+            fatal(f'Input for test \"{test_name}\" must be a list')
+        if type(d.get('expected')) is not str:
+            fatal(f'Expected output for test \"{test_name}\" must be a string')
 
 
     def get_actual(self, local):
@@ -158,8 +192,7 @@ class TestCase:
 
 def load_tests(cfg):
     tests_file = os.path.join(cfg.project_tests, cfg.project + '.toml', )
-    with open(tests_file) as f:
-        toml_input = toml.load(f)
+    toml_input = load_toml(tests_file)
     test_cases = []
     for t in toml_input['tests']:
         test_cases.append(TestCase(cfg, t))
