@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import difflib
 import os
 import pathlib
 import string
@@ -40,11 +41,11 @@ def cmd_exec_capture(args, wd=None, path=None):
 
 
 def print_green(s, e=''):
-    print('\033[92m' + s + ' \033[0m', end=e)
+    print('\033[92m' + s + '+' + ' \033[0m', end=e)
 
 
 def print_red(s, e=''):
-    print('\033[91m' + s + ' \033[0m', end=e)
+    print('\033[91m' + s + '-' + ' \033[0m', end=e)
 
 
 def load_toml(fname):
@@ -69,7 +70,9 @@ class Config:
         self.students = d.get('students')   # could get students or local
         self.test_name = d['name']          # optional
         self.verbose = d['verbose']         # optional, defaults to False
-
+        self.verbose2 = d['verbose2']       # optional
+        if self.verbose2:
+            self.verbose = True
 
     def validate_args(d):
         if d['testspath'] is None:
@@ -127,6 +130,8 @@ class Config:
             default=defaults.get('testspath', None))
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
             default=defaults.get('verbose', False))
+        p.add_argument('-vv', '--verbose2', action='store_true', help='Print actual and expected output',
+            default=defaults.get('verbose2', False))
         
         d = vars(p.parse_args())
         Config.validate_args(d)
@@ -153,6 +158,7 @@ class TestCase:
         self.output = d.get('output', 'stdout')
         self.rubric = d.get('rubric', None)
         self.verbose = cfg.verbose
+        self.verbose2 = cfg.verbose2
         self.ioprint = cfg.ioprint
 
 
@@ -175,20 +181,50 @@ class TestCase:
             path = os.path.join(local, self.output)
             return cmd_exec_capture(self.cmd_line, local, path)
 
+    def prepare_cmd_line(self, cmd_line):
+        cmd_line_prepared = [cmd_line[0]]
+        for arg in cmd_line[1:]:
+            if ' ' in arg:
+                arg = '"' + arg + '"'
+            cmd_line_prepared.append(arg)
+        return cmd_line_prepared
 
+    def make_lines(self, text):
+        text_lines = []
+        for line in text.split('\n'):
+            text_lines.append(line + '\n')
+        return text_lines
+        
     def match_expected(self, actual):
         # compare case-insensitive, ignoring whitespace
         # I'm queasy about ignoring whitespace, but it is what maketest did
-        loose_act = actual.lower().translate(TestCase.trans_table)
-        loose_exp = self.expected.lower().translate(TestCase.trans_table)
-        cmd_line_str = ' '.join(self.cmd_line)
-        if self.verbose:
-            print(f"===[{self.name}]===actual\n$ {cmd_line_str}\n{actual}")
-            print(f"===[{self.name}]===expected\n$ {cmd_line_str}\n{self.expected}")
+        #loose_exp = self.expected.lower().translate(TestCase.trans_table)
+        #loose_act = actual.lower().translate(TestCase.trans_table)
+
+        # Strip trailing whitespace - expected has extra newline
+        exp = self.expected.rstrip()
+        act = actual.rstrip()
+
+        cmd_line = self.prepare_cmd_line(self.cmd_line)
+        cmd_line_str = ' '.join(cmd_line)
+
+        if self.verbose2:
+            print(f"===[{self.name}]===expected\n$ {cmd_line_str}\n{exp}")
+            print()
+            print(f"===[{self.name}]===actual\n$ {cmd_line_str}\n{act}")
+            print()
+        if self.verbose and (act != exp):
+            print(f"===[{self.name}]===diff")
+            exp_lines = self.make_lines(exp)
+            act_lines = self.make_lines(act)
+            diff = difflib.context_diff(exp_lines, act_lines, fromfile='expected', tofile='actual')
+            for line in diff:
+                print(line, end='')
+            print()
+            
         if self.ioprint:
             print(f"$ {cmd_line_str}\n{actual}")
-        return loose_act == loose_exp
-
+        return act == exp
 
 def load_tests(cfg):
     tests_file = os.path.join(cfg.project_tests, cfg.project + '.toml', )
