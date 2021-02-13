@@ -214,7 +214,7 @@ class TestCase:
             print(f"===[{self.name}]===actual\n$ {cmd_line_str}\n{act}")
             print()
         if self.verbose and (act != exp):
-            print(f"===[{self.name}]===diff")
+            print(f"===[{self.name}]===diff\n$ {cmd_line_str}")
             exp_lines = self.make_lines(exp)
             act_lines = self.make_lines(act)
             diff = difflib.context_diff(exp_lines, act_lines, fromfile='expected', tofile='actual')
