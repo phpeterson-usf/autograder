@@ -109,7 +109,7 @@ class Config:
         # .toml file contains defaults. Command line args can override
         defaults = load_toml(config_file_path)
         p = argparse.ArgumentParser()
-        p.add_argument('action', type=str, choices=['class', 'clone', 'test'])
+        p.add_argument('action', type=str, choices=['class', 'clone', 'pull', 'test'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', None))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
@@ -128,9 +128,9 @@ class Config:
             default=defaults.get('students', None))
         p.add_argument('-t', '--testspath', help='Path to tests',
             default=defaults.get('testspath', None))
-        p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output',
+        p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output when they don\'t match',
             default=defaults.get('verbose', False))
-        p.add_argument('-vv', '--verbose2', action='store_true', help='Print actual and expected output',
+        p.add_argument('-vv', '--verbose2', action='store_true', help='Print actual and expected output whether they match or not',
             default=defaults.get('verbose2', False))
         
         d = vars(p.parse_args())
@@ -196,11 +196,6 @@ class TestCase:
         return text_lines
         
     def match_expected(self, actual):
-        # compare case-insensitive, ignoring whitespace
-        # I'm queasy about ignoring whitespace, but it is what maketest did
-        #loose_exp = self.expected.lower().translate(TestCase.trans_table)
-        #loose_act = actual.lower().translate(TestCase.trans_table)
-
         # Strip trailing whitespace - expected has extra newline
         exp = self.expected.rstrip()
         act = actual.rstrip()
@@ -260,9 +255,15 @@ class Repo:
         if self.remote is None:
             raise Exception(self.label + ' no remote to clone')
         if os.path.isdir(self.local):
-            return 0  # don't ask git to clone if local already exists
+            print('Already exists: ' + self.local)
+            return 0
         print(self.local)
         return cmd_exec_rc(['git', 'clone', self.remote, self.local])
+
+
+    def pull(self):
+        print(self.local)
+        return cmd_exec_rc(['git', 'pull', self.remote, self.local])
 
 
     def build(self):
@@ -328,7 +329,7 @@ def main():
             repo = Repo(cfg, student=s)
             repos.append(repo)
     else:
-        print("Must either 'test' one repo, or give a list of students to 'clone' or 'class'")
+        print("Must either 'test' one repo, or give a list of students to 'clone', 'pull' or 'class'")
         return -1
 
     # Calc column width for justified printing
@@ -339,11 +340,13 @@ def main():
             longest = l
     longest += 1
 
-    # Run all of the repos, either clone or test
+    # Run the specified actions for all of the repos
     for repo in repos:
         try:
             if cfg.action == 'clone':
                 repo.clone()
+            elif cfg.action == 'pull':
+                repo.pull()
             elif cfg.action == 'class' or cfg.action == 'test':
                 repo.build()
                 repo.test(test_cases, cfg.test_name)
