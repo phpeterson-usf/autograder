@@ -122,7 +122,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 1. Parameters given on the command line override those given in `config.toml`
 * `-c/--credentials` [https | ssh] https is the default
 * `-d/--digital` is the path to Digital's JAR file
-* `-e/--exec` provide commands to execute before testing (e.g. `git pull; make clean`)
+* `-e/--exec` provide commands to execute (e.g. `git pull; make clean`)
 * `-i/--ioprint` prints inputs and outputs to help write project specs
 * `-n/--name` runs one named test case, rather than all of them
 * `-o/--org` is the Github Classroom Organization 
