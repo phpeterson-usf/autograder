@@ -15,17 +15,17 @@ def fatal(s):
     sys.exit(-1)
 
 
-def cmd_exec(args, wd=None):
-    return subprocess.run(args, capture_output=True, timeout=10, cwd=wd)
+def cmd_exec(args, wd=None, shell=False):
+    return subprocess.run(args, capture_output=True, timeout=10, cwd=wd, shell=shell)
 
 
-def cmd_exec_rc(args):
-    proc = cmd_exec(args)
+def cmd_exec_rc(args, wd=None):
+    proc = cmd_exec(args, wd)
     return proc.returncode
 
 
-def cmd_exec_capture(args, wd=None, path=None):
-    proc = cmd_exec(args, wd)
+def cmd_exec_capture(args, wd=None, path=None, shell=False):
+    proc = cmd_exec(args, wd, shell)
     if (path):
         try:
             # capture output written to path
@@ -64,7 +64,8 @@ class Config:
         self.local = d.get('local')         # could get students or local
         self.org = d['org']                 # required
         self.project = d['project']         # required
-        self.ioprint = d['ioprint']          # optional
+        self.ioprint = d['ioprint']         # optional
+        self.pre_exec = d.get('exec')       # optional
         self.testspath = d.get('testspath') # required
         self.project_tests = os.path.join(self.testspath, self.project)        
         self.students = d.get('students')   # could get students or local
@@ -114,6 +115,8 @@ class Config:
             default=defaults.get('credentials', None))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
             default=defaults.get('digital', None))
+        p.add_argument('-e', '--exec', help='Execute command before build/test (git pull or make clean)',
+            default=defaults.get('exec', None))
         p.add_argument('-l', '--local', help='Local directory to test',
             default=defaults.get('local', '.'))
         p.add_argument('-n', '--name', help='Run test case with this name',
@@ -251,6 +254,10 @@ class Repo:
         self.verbose = cfg.verbose
 
 
+    def build(self):
+        return cmd_exec_rc(['make', '-C', self.local])
+
+
     def clone(self):
         if self.remote is None:
             raise Exception(self.label + ' no remote to clone')
@@ -266,8 +273,9 @@ class Repo:
         return cmd_exec_rc(['git', 'pull', self.remote, self.local])
 
 
-    def build(self):
-        return cmd_exec_rc(['make', '-C', self.local])
+    def pre_exec(self, cmd):
+        output = cmd_exec_capture(cmd, wd=self.local, shell=True)
+        print(output)
 
 
     def test_one(self, test_case):
@@ -343,6 +351,8 @@ def main():
     # Run the specified actions for all of the repos
     for repo in repos:
         try:
+            if cfg.pre_exec:
+                repo.pre_exec(cfg.pre_exec)
             if cfg.action == 'clone':
                 repo.clone()
             elif cfg.action == 'pull':

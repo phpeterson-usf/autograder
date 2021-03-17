@@ -122,12 +122,14 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 1. Parameters given on the command line override those given in `config.toml`
 * `-c/--credentials` [https | ssh] https is the default
 * `-d/--digital` is the path to Digital's JAR file
+* `-e/--exec` provide commands to execute before testing (e.g. `git pull; make clean`)
 * `-i/--ioprint` prints inputs and outputs to help write project specs
 * `-n/--name` runs one named test case, rather than all of them
 * `-o/--org` is the Github Classroom Organization 
 * `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
 * `-s/--students` is a list of student Github IDs (no punctuation needed)
-* `-v/--verbose` shows some of what autograder is doing
+* `-v/--verbose` shows expected and actual for failing test cases
+* `-vv/--vverbose` shows expected and actual for all test cases
 
 ## Using Digital
 1. [Digital](https://github.com/hneemann/Digital) has test case components which can test a circuit using pre-defined inputs and outputs. See Digital's documentation for scripted testing examples.
