@@ -56,6 +56,11 @@ def load_toml(fname):
             fatal(f'{fname}: {e}')
 
 
+class ProjectConfig:
+    def __init__(self, d):
+        self.build = d.get('build', 'make')
+
+
 class Config:
     def __init__(self, d):
         self.action = d['action']           # required
@@ -65,6 +70,7 @@ class Config:
         self.local = d.get('local')         # could get students or local
         self.org = d['org']                 # required
         self.project = d['project']         # required
+        self.project_cfg = None             # comes from project toml
         self.ioprint = d['ioprint']         # optional
         self.testspath = d.get('testspath') # required
         self.project_tests = os.path.join(self.testspath, self.project)        
@@ -232,6 +238,9 @@ def load_tests(cfg):
     test_cases = []
     for t in toml_input['tests']:
         test_cases.append(TestCase(cfg, t))
+
+    cfg.project_cfg = ProjectConfig(toml_input.get('project', {}))
+
     return test_cases
 
 
@@ -254,10 +263,15 @@ class Repo:
         self.label = self.local.split('/')[-1]
         self.results = []
         self.verbose = cfg.verbose
-
+        self.build_plan = cfg.project_cfg.build
 
     def build(self):
-        return cmd_exec_rc(['make', '-C', self.local])
+        if self.build_plan == 'none':
+            return 0
+        elif self.build_plan == 'make':
+            return cmd_exec_rc(['make', '-C', self.local])
+        else:
+            fatal(f'Unknown build plan: \"{self.build_plan}\"')
 
 
     def clone(self):
