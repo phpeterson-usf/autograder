@@ -59,7 +59,7 @@ def load_toml(fname):
 class ProjectConfig:
     def __init__(self, d):
         self.build = d.get('build', 'make')
-
+        self.strip_output = d.get('strip_output')
 
 class Config:
     def __init__(self, d):
@@ -168,6 +168,7 @@ class TestCase:
         self.name = d.get('name', None)
         self.output = d.get('output', 'stdout')
         self.rubric = d.get('rubric', None)
+        self.strip_output = cfg.project_cfg.strip_output
         self.verbose = cfg.verbose
         self.verbose2 = cfg.verbose2
         self.ioprint = cfg.ioprint
@@ -186,11 +187,14 @@ class TestCase:
     def get_actual(self, local):
         if self.output == 'stdout':
             # get actual output from stdout
-            return cmd_exec_capture(self.cmd_line, local)
+            act = cmd_exec_capture(self.cmd_line, local)
         else:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.output)
-            return cmd_exec_capture(self.cmd_line, local, path)
+            act = cmd_exec_capture(self.cmd_line, local, path)
+        if self.strip_output:
+            act = act.replace(self.strip_output, '')
+        return act
 
     def prepare_cmd_line(self, cmd_line):
         cmd_line_prepared = [cmd_line[0]]
@@ -235,11 +239,10 @@ class TestCase:
 def load_tests(cfg):
     tests_file = os.path.join(cfg.project_tests, cfg.project + '.toml', )
     toml_input = load_toml(tests_file)
+    cfg.project_cfg = ProjectConfig(toml_input.get('project', {}))
     test_cases = []
     for t in toml_input['tests']:
         test_cases.append(TestCase(cfg, t))
-
-    cfg.project_cfg = ProjectConfig(toml_input.get('project', {}))
 
     return test_cases
 
