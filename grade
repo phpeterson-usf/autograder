@@ -72,7 +72,7 @@ class Config:
         self.project = d['project']         # required
         self.project_cfg = None             # comes from project toml
         self.ioprint = d['ioprint']         # optional
-        self.testspath = d.get('testspath') # required
+        self.testspath = os.path.expanduser(d.get('testspath')) # required
         self.project_tests = os.path.join(self.testspath, self.project)        
         self.students = d.get('students')   # could get students or local
         self.test_name = d['name']          # optional
@@ -82,8 +82,6 @@ class Config:
             self.verbose = True
 
     def validate_args(d):
-        if d['testspath'] is None:
-            fatal('testspath not given in config or command line')
         if d['project'] is None:
             fatal('project not given in config or command line')
         if d['action'] == 'exec' and d.get('exec') is None:
@@ -120,7 +118,7 @@ class Config:
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'test'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
-            default=defaults.get('credentials', None))
+            default=defaults.get('credentials', 'ssh'))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
             default=defaults.get('digital', None))
         p.add_argument('-e', '--exec', help='Execute command in each repo (git pull or make clean)',
@@ -138,7 +136,7 @@ class Config:
         p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
             default=defaults.get('students', None))
         p.add_argument('-t', '--testspath', help='Path to tests',
-            default=defaults.get('testspath', None))
+            default=defaults.get('testspath', '~/tests'))
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output when they don\'t match',
             default=defaults.get('verbose', False))
         p.add_argument('-vv', '--verbose2', action='store_true', help='Print actual and expected output whether they match or not',
