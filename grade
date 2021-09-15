@@ -183,13 +183,16 @@ class TestCase:
 
 
     def get_actual(self, local):
-        if self.output == 'stdout':
-            # get actual output from stdout
-            act = cmd_exec_capture(self.cmd_line, local)
-        else:
-            # ignore stdout and get actual output from the specified file
-            path = os.path.join(local, self.output)
-            act = cmd_exec_capture(self.cmd_line, local, path)
+        try:
+            if self.output == 'stdout':
+                # get actual output from stdout
+                act = cmd_exec_capture(self.cmd_line, local)
+            else:
+                # ignore stdout and get actual output from the specified file
+                path = os.path.join(local, self.output)
+                act = cmd_exec_capture(self.cmd_line, local, path)
+        except FileNotFoundError:
+            act = ''
         if self.strip_output:
             act = act.replace(self.strip_output, '')
         return act
