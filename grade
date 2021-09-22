@@ -191,7 +191,7 @@ class TestCase:
                 # ignore stdout and get actual output from the specified file
                 path = os.path.join(local, self.output)
                 act = cmd_exec_capture(self.cmd_line, local, path)
-        except FileNotFoundError:
+        except (FileNotFoundError, subprocess.TimeoutExpired):
             act = ''
         if self.strip_output:
             act = act.replace(self.strip_output, '')
