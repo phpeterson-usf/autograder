@@ -333,6 +333,24 @@ class Repo:
 
         print(f"{earned}/{avail}")
 
+    def get_score(self):
+        score = 0;
+        for r in self.results:
+            score += r['score'];
+        return score
+
+
+def print_score_frequency(repos):
+    freqs = {}
+    repos.sort(key=Repo.get_score, reverse=True)
+    for repo in repos:
+        score = repo.get_score()
+        if not score in freqs:
+            freqs[score] = 0
+        freqs[score] += 1
+    for score, freq in freqs.items():
+        print(f"score: {score}, frequency: {freq}")
+
 
 def main():
     args = Config.parse_args('config.toml')
@@ -379,6 +397,9 @@ def main():
             print_red(repo.label + ' ' + str(e), '\n')
             continue
 
+    # Summary by score frequency
+    if cfg.action == 'class':
+        print_score_frequency(repos)
 
 if __name__ == "__main__":
     main()
