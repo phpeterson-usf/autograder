@@ -102,7 +102,7 @@ class Config:
                 f.write('# Default config.toml\n')
                 f.write('# credentials = "ssh"\n')
                 f.write('# credentials = "http"\n')                
-                f.write('# digital = "path_to_Digital.jar"\n')
+                f.write('# digital = "path_to_Digital"\n')
                 f.write('# org = "github_org_name"\n')
                 f.write('# project = "default_project_name"\n')
                 f.write('# students = [\n')
@@ -121,7 +121,7 @@ class Config:
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', 'ssh'))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
-            default=defaults.get('digital', None))
+            default=defaults.get('digital', '~/Digital'))
         p.add_argument('-da', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
             default=defaults.get('date', None))
         p.add_argument('-e', '--exec', help='Execute command in each repo (git pull or make clean)',
