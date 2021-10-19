@@ -66,7 +66,7 @@ class Config:
         self.action = d['action']           # required
         self.credentials = d['credentials'] # required
         self.date = d['date']               # optional
-        self.digital = d.get('digital')     # optional til Digital projects
+        self.digital = os.path.expanduser(d.get('digital')) # optional path to Digital directory
         self.exec_cmd = d.get('exec')       # optional
         self.local = d.get('local')         # could get students or local
         self.org = d['org']                 # required
