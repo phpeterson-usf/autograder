@@ -121,7 +121,7 @@ class Config:
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', 'ssh'))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
-            default=defaults.get('digital', '~/Digital'))
+            default=defaults.get('digital', '~/Digital/Digital.jar'))
         p.add_argument('-da', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
             default=defaults.get('date', None))
         p.add_argument('-e', '--exec', help='Execute command in each repo (git pull or make clean)',
