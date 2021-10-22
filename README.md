@@ -32,14 +32,11 @@
     $ git clone git@github.com:/cs315-21s/tests.git
     $ git clone git@github.com:/USF-CS631-S21/tests.git
     ``` 
-1. Run the `grade` script once and it will create a config file in `~/.config/grade`. Edit this so it contains the following pieces of information:
-   1. The authentication you use for GitHub: ssh or https
-   1. The Github Classroom organization for your class
-   1. The path to your tests repo
-        ```
-        credentials = "ssh"
-        testspath = "/home/pi/tests"
-        ```
+1. By default, `grade` assumes that you authenticate to Github using `ssh` and test cases are in `~/tests`. If you need different settings, you can edit the config file: `~/.config/grade/config.toml`:
+    ```
+    credentials = "https"
+    testspath = "~/myclass/tests"
+    ```
 
 ## Usage for Students
 1. You can test a project in the current directory like this
@@ -49,7 +46,7 @@
     ```
 
 ## Usage for Instructors
-1. Add your Github Classroom organization and a list of students to your `~/.config/grade/config.toml`
+1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
     ```
     org = "cs315-21s"
     students = [
@@ -59,23 +56,27 @@
     ```
 1. You can clone all of your students repos to your machine. `grade` will create `./github.com/` in the current working directory, with subdirectories for your organization and student repos
     ```
-    $ grade clone
+    $ grade clone -p project02
     github.com/cs315-21s/project02-phpeterson-usf
     github.com/cs315-21s/project02-gdbenson
     ```
-1.  After developing test cases for your projects (see below), you can test all of your students' repos in batch
+1. `grade clone` can accept a date for your project deadline, assuming the deadline was midnight, local time, the day before:
     ```
-    $ grade class
-    project02-phpeterson-usf 01 02 10/10
-    project02-gdbenson       01 02 10/10
+    $ grade clone -p project02 --date '2021-10-14'
+    ```
+    That will use `git rev-list` to find the commit hash of the last commit before `00:00:00` on that date, on the branch `main` or `master`. Then it will use `git checkout` to checkout the repo as of that hash. Keep in mind this leaves the repo in a "detached HEAD" state, so you won't be able to `git pull` new work until you `git checkout main` (or `master`) again.
+1.  After developing test cases for your projects (see below), you can test all of your students' repos in batch. Passing test cases are shown in green with a '+' and failing test cases are shown in red with a '-'
+    ```
+    $ grade class -p project02
+    project02-phpeterson-usf 01- 02+  5/10
+    project02-gdbenson       01+ 02+  10/10
     ```
 1. Each test case can pass or fail. The score is shown as the total earned/total available, based on the `rubric` field in each test case
 
 ## Test Cases
 1. Instructors must create their own repo for the test cases for the class projects. Students will clone and pull this repo. We create this repo in the Github Classroom Organization, but that's up to you.
-1. Test cases for each project are expressed in TOML, as you can see in the `example_tests/` directory here
-1. Test case inputs are a list of strings for each command-line flag and value. The keyword `$project` will be substituted for
-the name of your project. 
+1. Test cases for each project are expressed in TOML 
+1. Test case inputs are a list of strings for each command-line flag and value. The keyword `$project` will be substituted for the name of your project. 
     ```
     $ cat project02.toml
     [[tests]]
@@ -113,7 +114,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 ## Command Line Parameters
 1. `grade` supports these parameters, which can be given on the command line, or in `~/.config/grade/config.toml`, for less typing. 
 1. The syntax in `config.toml` just uses the name, without dashes, as shown at the top of this README
-1. The command-line format is argparse-style, with no "=". These two commands are equivalent:
+1. The command-line format is `argparse`-style, with no "=". These two commands are equivalent:
     ```
     $ cd ~/project02-jsmith
     $ grade test -p project02
@@ -121,6 +122,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     ```
 1. Parameters given on the command line override those given in `config.toml`
 * `-c/--credentials` [https | ssh] https is the default
+* `-da/--date` is the date to use for grade clone
 * `-d/--digital` is the path to Digital's JAR file
 * `-e/--exec` provide commands to execute (e.g. `git pull; make clean`)
 * `-i/--ioprint` prints inputs and outputs to help write project specs
@@ -133,10 +135,23 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 
 ## Using Digital
 1. [Digital](https://github.com/hneemann/Digital) has test case components which can test a circuit using pre-defined inputs and outputs. See Digital's documentation for scripted testing examples.
-1. `grade` leverages its ability to loop over the student repos, using Java and Digital's test case components, looking
-for a passing report from Digital
-1. Examples of Digital test cases combined with autograder test cases are available [here](https://github.com/phpeterson-usf/autograder/tree/main/tests/project06)
-1. `grade` needs to know where Digital's JAR file lives. There is a configuration for that path in `config.toml`, in your platform's native format
+1. `grade` leverages its ability to loop over the student repos, calling Java on the command line to use Digital's test case components. Example test case:
     ```
-    digital = "/home/me/Digital/digital.jar"
+    [project]
+    build = "none"
+    strip_output = """
+    Use default settings!
+    """
+
+    [[tests]]
+    name = "1-bit-full-adder"
+    input = ["java", "-cp", "$digital", "CLI", "test", "1-bit-full-adder.dig", "-tests", "$project_tests/1bfa_test.dig"]
+    expected = """
+    1bfa_test: passed
+    """
+    rubric = 1
+    ```
+1. `grade` assumes that the path to the Digital JAR file is `~/Digital/Digital.jar`. If you need a different setting, you can change it in `~/.config/grade/config.toml`:
+    ```
+    digital = "~/myclass/Digital/Digital.jar"
     ```
