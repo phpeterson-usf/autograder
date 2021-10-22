@@ -16,7 +16,9 @@ def fatal(s):
 
 
 def cmd_exec(args, wd=None, shell=False):
-    return subprocess.run(args, capture_output=True, timeout=10, cwd=wd, shell=shell)
+    # return stdout and stderr output combined
+    return subprocess.run(args, timeout=10, cwd=wd, stdout=subprocess.PIPE, 
+        stderr=subprocess.STDOUT, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
