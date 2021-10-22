@@ -357,16 +357,23 @@ class Repo:
         return score
 
 
-def print_score_frequency(repos):
-    freqs = {}
+def print_score_frequency(repos, test_cases):
+    avail = 0  # points available
+    for tc in test_cases:
+        avail += tc.rubric
+
     repos.sort(key=Repo.get_score, reverse=True)
+    freqs = {}  # key: score, value: frequency
     for repo in repos:
         score = repo.get_score()
         if not score in freqs:
             freqs[score] = 0
         freqs[score] += 1
+
+    print("\nScore frequency")
     for score, freq in freqs.items():
-        print(f"score: {score}, frequency: {freq}")
+        pct = "{:.1f}".format(freq / len(repos) * 100)
+        print(f"{score}/{avail}: {freq}  ({pct}%)")
 
 
 def main():
@@ -416,7 +423,7 @@ def main():
 
     # Summary by score frequency
     if cfg.action == 'class':
-        print_score_frequency(repos)
+        print_score_frequency(repos, test_cases)
 
 if __name__ == "__main__":
     main()
