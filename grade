@@ -17,7 +17,7 @@ def fatal(s):
 
 def cmd_exec(args, wd=None, shell=False):
     # return stdout and stderr output combined
-    return subprocess.run(args, timeout=10, cwd=wd, stdout=subprocess.PIPE, 
+    return subprocess.run(args, timeout=30, cwd=wd, stdout=subprocess.PIPE, 
         stderr=subprocess.STDOUT, shell=shell)
 
 
@@ -197,6 +197,7 @@ class TestCase:
                 path = os.path.join(local, self.output)
                 act = cmd_exec_capture(self.cmd_line, local, path)
         except (FileNotFoundError, subprocess.TimeoutExpired):
+            print("Timeout Expired!!!")
             act = ''
         if self.strip_output:
             act = act.replace(self.strip_output, '')
