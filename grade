@@ -43,11 +43,11 @@ def cmd_exec_capture(args, wd=None, path=None, shell=False):
 
 
 def print_green(s, e=''):
-    print('\033[92m' + s + '+' + ' \033[0m', end=e)
+    print('\033[92m' + s + '+' + ' \033[0m', end=e, flush=True)
 
 
 def print_red(s, e=''):
-    print('\033[91m' + s + '-' + ' \033[0m', end=e)
+    print('\033[91m' + s + '-' + ' \033[0m', end=e, flush=True)
 
 
 def load_toml(fname):
@@ -320,6 +320,9 @@ class Repo:
 
         # record score for later printing
         result = {'test': test_case, 'score': score}
+        if self.verbose:
+            # or print now if testing is slow, like in Digital
+            self.print_one_result(result)
         self.results.append(result)
 
 
@@ -332,6 +335,11 @@ class Repo:
             for tc in test_cases:
                 self.test_one(tc)
 
+    def print_one_result(self, res):
+        if res['score'] == 0:
+            print_red(res['test'].name)
+        else:
+            print_green(res['test'].name)
 
     def print_results(self, longest):
         print(self.label, end='')
@@ -343,12 +351,9 @@ class Repo:
         for r in self.results:
             rubric = r['test'].rubric
             avail += rubric
-            if r['score'] == 0:
-                print_red(r['test'].name)
-            else:
+            if r['score'] != 0:
                 earned += rubric
-                print_green(r['test'].name)
-
+            self.print_one_result(r)
         print(f"{earned}/{avail}")
 
     def get_score(self):
