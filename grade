@@ -119,7 +119,7 @@ class Config:
         # .toml file contains defaults. Command line args can override
         defaults = load_toml(config_file_path)
         p = argparse.ArgumentParser()
-        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'test'])
+        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'names', 'test'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', 'ssh'))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
@@ -253,6 +253,9 @@ def load_tests(cfg):
 
     return test_cases
 
+def print_tests(tests):
+    for tc in tests:
+        print(tc.name)
 
 class Repo:
     def __init__(self, cfg, **kwargs):
@@ -386,6 +389,10 @@ def main():
     args = Config.parse_args('config.toml')
     cfg = Config(args)
     test_cases = load_tests(cfg)
+
+    if cfg.action == 'names':
+        print_tests(test_cases)
+        return 0;
 
     # Build list of repos to run, either from local or list of students
     repos = []
