@@ -91,13 +91,23 @@ class Config:
             fatal('-e \'cmd\' not given with exec')
 
 
+    # Look for config.toml in current dir, else home dir
+    # This is useful if you have multiple classes
+    def get_path(fname):
+        cwd = str(pathlib.Path.cwd())
+        path = pathlib.Path(cwd + fname)
+        if not path.exists():
+            home = str(pathlib.Path.home())
+            path = pathlib.Path(home + '/.config/grade' + fname)
+        return path
+
+
     def parse_args(fname):
         # Check to see if ~/.config/grade/config.toml exits
         # Create if it does not exit
         # Create path if needed
-        home = str(pathlib.Path.home())
-        config_path = home + '/.config/grade'
-        config_file_path = pathlib.Path(config_path + '/config.toml')
+        config_file_path = Config.get_path('/config.toml')
+        print('config path: ' + str(config_file_path))
         if not config_file_path.exists():
             pathlib.Path(config_path).mkdir(parents=True, exist_ok=True)
             with open(config_file_path, 'w') as f:
