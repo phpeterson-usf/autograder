@@ -29,13 +29,10 @@ def cmd_exec_rc(args, wd=None):
 def cmd_exec_capture(args, wd=None, path=None, shell=False):
     proc = cmd_exec(args, wd, shell)
     if (path):
-        try:
-            # capture output written to path
-            f = open(path, 'r')
-            output = f.read()
-            f.close()
-        except FileNotFoundError:
-            return ''
+        # capture output written to path
+        f = open(path, 'r')
+        output = f.read()
+        f.close()
     else:
         # capture output written to stdout
         output = proc.stdout.decode('utf-8')
@@ -196,9 +193,10 @@ class TestCase:
                 # ignore stdout and get actual output from the specified file
                 path = os.path.join(local, self.output)
                 act = cmd_exec_capture(self.cmd_line, local, path)
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            print("Timeout Expired!!!")
-            act = ''
+        except (FileNotFoundError, subprocess.TimeoutExpired) as err:
+            print(f'{self.name}: {err}')
+            return ''
+
         if self.strip_output:
             act = act.replace(self.strip_output, '')
         return act
