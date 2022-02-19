@@ -287,10 +287,24 @@ class Repo:
         else:
             fatal(f'Unknown build plan: \"{self.build_plan}\"')
 
+    def get_default_branch(self):
+        branches = subprocess.Popen(
+            ['git', 'branch', '--remotes', '--list', '*/HEAD'],
+            stdout=subprocess.PIPE,
+            cwd=self.local
+        )
+        cut = subprocess.Popen(
+            ['cut', '-d/', '-f3'],
+            stdin=branches.stdout,
+            stdout=subprocess.PIPE,
+        )
+        branch = cut.stdout.read().decode("utf-8").strip()
+        return branch
 
     def get_commit_hash(self, branch):
         deadline = '\"' + self.date + ' 00:00:00' + '\"'
-        cmd = ['git', 'rev-list', '-n', '1', '--first-parent', '--before', deadline, branch]
+        cmd = ['git', 'rev-list', '-n', '1', '--first-parent', 
+            "--pretty='format:%h %s %cd'", 'HEAD', '--date=local','--before', deadline, branch]
         return cmd_exec_capture(cmd, wd=self.local)
 
     def clone(self):
@@ -300,14 +314,13 @@ class Repo:
             print('Already exists: ' + self.local)
             return 0
         name = self.local + ' '
-        if self.date:
-            print(name, end='')
-        else:
-            print(name)
+        print(name)
         cmd_exec_rc(['git', 'clone', self.remote, self.local])
         if self.date:
-            commit_hash = self.get_commit_hash('master') or self.get_commit_hash('main')
-            print(commit_hash)
+            branch = self.get_default_branch()
+            commit_hash = self.get_commit_hash(branch)
+            if self.verbose:
+                print(f'{branch} {commit_hash}')
             cmd_exec_rc(['git', 'checkout', commit_hash], wd=self.local)
 
     def exec_cmd(self, cmd):
