@@ -116,7 +116,7 @@ class Config:
         # .toml file contains defaults. Command line args can override
         defaults = load_toml(config_file_path)
         p = argparse.ArgumentParser()
-        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'names', 'test'])
+        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'names', 'pull', 'test'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', 'ssh'))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
@@ -298,16 +298,20 @@ class Repo:
         return branch
 
     def get_commit_hash(self, branch):
-        deadline = '\"' + self.date + ' 00:00:00' + '\"'
+        # append time if not provided on the command line
+        time = '' if ' ' in self.date else ' 00:00:00'
+        deadline = '\'' + self.date + time + '\''
         cmd = ['git', 'rev-list', '-n', '1', '--first-parent', 
             "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
         lines =  cmd_exec_capture(cmd, wd=self.local)
+        if len(lines) == 0:
+            print(f'no commits before {deadline}', end='')
+            return None
         split_lines = lines.split("\n")
         commit_line = split_lines[0]
         date_line = split_lines[1]
         h = commit_line.split()[1][0:7]
-        if self.verbose:
-            print(f'branch: {branch}, hash: {h}, date: {date_line}')
+        print(f'branch: {branch}, hash: {h}, date: {date_line}', end='')
         return h
 
     def clone(self):
@@ -316,16 +320,23 @@ class Repo:
         if os.path.isdir(self.local):
             print('Already exists: ' + self.local)
             return 0
-        name = self.local + ' '
-        print(name)
+        print(f'{self.local} ', end='')
         cmd_exec_rc(['git', 'clone', self.remote, self.local])
         if self.date:
             branch = self.get_default_branch()
             commit_hash = self.get_commit_hash(branch)
-            cmd_exec_rc(['git', 'checkout', commit_hash], wd=self.local)
+            if commit_hash:
+                cmd_exec_rc(['git', 'checkout', commit_hash], wd=self.local)
+        print()
 
+    def pull(self):
+        print(f'{self.local }')
+        branch = self.get_default_branch()
+        cmd_exec_rc(['git', 'checkout', branch], wd=self.local)
+        cmd_exec_rc(['git', 'pull'], wd=self.local)
+    
     def exec_cmd(self, cmd):
-        print(self.local, end = ': ')
+        print(self.local, end = '')
         output = cmd_exec_capture(cmd, wd=self.local, shell=True)
         print(output)
 
@@ -438,6 +449,8 @@ def main():
         try:
             if cfg.action == 'clone':
                 repo.clone()
+            elif cfg.action == 'pull':
+                repo.pull()
             elif cfg.action == 'exec':
                 repo.exec_cmd(cfg.exec_cmd)
             elif cfg.action == 'class' or cfg.action == 'test':

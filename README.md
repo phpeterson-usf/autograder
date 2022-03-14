@@ -60,11 +60,16 @@
     github.com/cs315-21s/project02-phpeterson-usf
     github.com/cs315-21s/project02-gdbenson
     ```
-1. `grade clone` can accept a date for your project deadline, assuming the deadline was midnight, local time, the day before:
+1. `grade clone` can accept a date, or date and time, for your project deadline
     ```
     $ grade clone -p project02 --date '2021-10-14'
+    $ grade clone -p project02 --date '2021-10-14 08:00:00'
     ```
-    That will use `git rev-list` to find the commit hash of the last commit before `00:00:00` on that date, on the branch `main` or `master`. Then it will use `git checkout` to checkout the repo as of that hash. Keep in mind this leaves the repo in a "detached HEAD" state, so you won't be able to `git pull` new work until you `git checkout main` (or `master`) again.
+    Notes:
+    1. If no time is given, the script assumes midnight `00:00:00`
+    1. The script uses `git rev-list` to find the commit hash of the last commit on the default branch ('main' or 'master') before that date
+    1. The script uses `git checkout` to checkout the repo as of that hash. Keep in mind this leaves the repo in a "detached HEAD" state
+    1. If you want to checkout the tip of the default branch again, you can use `grade pull`
 1.  After developing test cases for your projects (see below), you can test all of your students' repos in batch. Passing test cases are shown in green with a '+' and failing test cases are shown in red with a '-'
     ```
     $ grade class -p project02
