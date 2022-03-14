@@ -212,13 +212,13 @@ class TestCase:
     def make_lines(self, text):
         text_lines = []
         for line in text.split('\n'):
-            text_lines.append(line + '\n')
+            text_lines.append(line.strip() + '\n')
         return text_lines
         
     def match_expected(self, actual):
-        # Strip trailing whitespace - expected has extra newline
-        exp = self.expected.rstrip()
-        act = actual.rstrip()
+        # rstrip to remove extra trailing newline
+        exp = self.make_lines(self.expected.rstrip())
+        act = self.make_lines(actual.rstrip())
 
         cmd_line = self.prepare_cmd_line(self.cmd_line)
         cmd_line_str = ' '.join(cmd_line)
@@ -230,9 +230,7 @@ class TestCase:
             print()
         if self.verbose and (act != exp):
             print(f"===[{self.name}]===diff\n$ {cmd_line_str}")
-            exp_lines = self.make_lines(exp)
-            act_lines = self.make_lines(act)
-            diff = difflib.context_diff(exp_lines, act_lines, fromfile='expected', tofile='actual')
+            diff = difflib.context_diff(exp, act, fromfile='expected', tofile='actual')
             for line in diff:
                 print(line, end='')
             print()
