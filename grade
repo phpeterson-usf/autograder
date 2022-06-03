@@ -17,8 +17,9 @@ def fatal(s):
 
 def cmd_exec(args, wd=None, shell=False):
     # return stdout and stderr output combined
-    return subprocess.run(args, timeout=30, cwd=wd, stdout=subprocess.PIPE, 
-        stderr=subprocess.STDOUT, shell=shell)
+    return subprocess.run(args, timeout=30, check=True, cwd=wd, capture_output=True, shell=shell)
+    # return subprocess.run(args, timeout=30, cwd=wd, stdout=subprocess.PIPE, 
+    #     stderr=subprocess.STDOUT, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
@@ -27,7 +28,11 @@ def cmd_exec_rc(args, wd=None):
 
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False):
-    proc = cmd_exec(args, wd, shell)
+    try:
+        proc = cmd_exec(args, wd, shell)
+    except subprocess.CalledProcessError as e:
+        return str(e)
+
     if (path):
         # capture output written to path
         f = open(path, 'r')
@@ -324,8 +329,11 @@ class Repo:
         if os.path.isdir(self.local):
             print('Already exists: ' + self.local)
             return 0
+        rc = cmd_exec_rc(['git', 'clone', self.remote, self.local])
+        if rc != 0:
+            print('No repo: ' + self.remote)
+            return 0
         print(f'{self.local} ', end='')
-        cmd_exec_rc(['git', 'clone', self.remote, self.local])
         if self.date:
             branch = self.get_default_branch()
             commit_hash = self.get_commit_hash(branch)
