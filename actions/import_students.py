@@ -11,6 +11,7 @@ from config import config_path, config_temp_path
 # Download list of students from a Google Sheets spreadsheet
 # ss_id: document ID out of the URL, e.g. "1Nj4Lvldz_94PlHmRUrSfl_5rm6tgm5JnkCob-p63PGk"
 # ss_name: name of the spreadsheet tab
+# Returns the CSV reader obj for the caller to iterate
 def _download(ss_id, ss_name):
     url = 'https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}'\
         .format(ss_id, ss_name)
@@ -19,12 +20,7 @@ def _download(ss_id, ss_name):
         print('requests.get returned {}', response.status_code)
         sys.exit(-1)
 
-    reader = csv.DictReader(response.text.splitlines())
-    students = []
-    for row in reader:
-        students.append(row['GitHub'])
-    return students
-
+    return csv.DictReader(response.text.splitlines())
 
 # Rewrite config.toml with the given list of student GitHub usernames 
 def _update(students):
@@ -53,9 +49,23 @@ def _update(students):
 
 # Public API to import the list of students and store them
 def import_students(ss_id, tab_name):
-    students = _download(ss_id, tab_name)
+    students = []
+    reader = _download(ss_id, tab_name)
+    for row in reader:
+        students.append(row['GitHub'])
+    return students
+
     if students:
         _update(students)
+
+
+# Public API to import a mapping between GitHub username and SIS Login ID
+def import_student_map(ss_id, tab_name)
+    reader = _download(ss_id, tab_name)
+    mapping = {}
+    for row in reader:
+        mapping[row['GitHub']] = row['SIS Login ID']
+    return mapping
 
 
 # Test harness

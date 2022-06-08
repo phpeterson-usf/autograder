@@ -9,6 +9,7 @@ import subprocess
 import sys
 import toml
 
+from actions.canvas import canvas_upload
 
 def fatal(s):
     print(s)
@@ -16,10 +17,7 @@ def fatal(s):
 
 
 def cmd_exec(args, wd=None, shell=False):
-    # return stdout and stderr output combined
     return subprocess.run(args, timeout=30, check=True, cwd=wd, capture_output=True, shell=shell)
-    # return subprocess.run(args, timeout=30, cwd=wd, stdout=subprocess.PIPE, 
-    #     stderr=subprocess.STDOUT, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
@@ -72,6 +70,7 @@ class ProjectConfig:
 class Config:
     def __init__(self, d):
         self.action = d['action']           # required
+        self.canvas_course_name = d['canvas_course_name']
         self.credentials = d['credentials'] # required
         self.date = d['date']               # optional
         self.digital = os.path.expanduser(d.get('digital')) # optional path to Digital directory
@@ -110,24 +109,26 @@ class Config:
                 f.write('# Default config.toml\n')
                 f.write('# credentials = "ssh"\n')
                 f.write('# credentials = "http"\n')                
-                f.write('# digital = "path_to_Digital"\n')
+                f.write('# digital = "~/Digital/Digital.jar"\n')
                 f.write('# org = "github_org_name"\n')
-                f.write('# project = "default_project_name"\n')
+                f.write('# project = "lab01"\n')
                 f.write('# students = [\n')
                 f.write('#     "github_id_1",\n')
                 f.write('#     "github_id_2",\n')
                 f.write('#     "github_id_3"\n')
                 f.write('# ]\n')
-                f.write('# testspath = "path_to_tests"\n')
+                f.write('# testspath = "~/tests"\n')
                 f.write('# verbose = false\n')
                 f.write('# verbose = true\n')
 
         # .toml file contains defaults. Command line args can override
         defaults = load_toml(config_file_path)
         p = argparse.ArgumentParser()
-        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'names', 'pull', 'test'])
+        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'import', 'names', 'pull', 'test', 'upload'])
         p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
             default=defaults.get('credentials', 'ssh'))
+        p.add_argument('-ca', '--canvas_course_name', help='Canvas course name',
+            default=defaults.get('canvas_course_name', None))
         p.add_argument('-d', '--digital', help='Path to digital.jar',
             default=defaults.get('digital', '~/Digital/Digital.jar'))
         p.add_argument('-da', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
@@ -267,7 +268,8 @@ class Repo:
         # calculate the local and remote for this repo
         student = kwargs.get('student')
         if student:
-            pg = cfg.project + '-' + student
+            self.student = student
+            pg = cfg.project + '-' + self.student
             self.local = os.path.join('github.com', cfg.org, pg)
             # set up remote repo for clone
             if cfg.credentials == 'https':
@@ -402,6 +404,14 @@ class Repo:
             score += r['score'];
         return score
 
+    def get_canvas_score(self):
+        canvas_score = {
+            'github': self.student
+            'score': self.get_score()
+        }
+        return canvas_score
+        
+
 
 def print_score_frequency(repos, test_cases):
     avail = 0  # points available
@@ -433,6 +443,7 @@ def main():
 
     # Build list of repos to run, either from local or list of students
     repos = []
+    canvas_scores = []
     if cfg.action == 'test':
         # One local repo
         if not os.path.isdir(cfg.local):
@@ -445,11 +456,11 @@ def main():
             repo = Repo(cfg, student=s)
             repos.append(repo)
     else:
-        print("Must either 'test' one repo, or give a list of students to 'clone', 'pull' or 'class'")
+        print("Must either 'test' one repo, or give a list of students to 'clone', 'pull', 'class', or 'upload'")
         return -1
 
     # Calc column width for justified printing
-    longest = 0;
+    longest = 0
     for r in repos:
         l = len(r.label)
         if l > longest:
@@ -465,10 +476,13 @@ def main():
                 repo.pull()
             elif cfg.action == 'exec':
                 repo.exec_cmd(cfg.exec_cmd)
-            elif cfg.action == 'class' or cfg.action == 'test':
+            elif cfg.action == 'class' or cfg.action == 'test' or cfg.action == 'upload':
                 repo.build()
                 repo.test(test_cases, cfg.test_name)
                 repo.print_results(longest)
+                if cfg.action == 'upload':
+                    # Accumulate scores for upload
+                    canvas_scores.append(repo.get_canvas_score())             
         except Exception as e:
             print_red(repo.label + ' ' + str(e), '\n')
             continue
@@ -476,6 +490,11 @@ def main():
     # Summary by score frequency
     if cfg.action == 'class':
         print_score_frequency(repos, test_cases)
+    elif cfg.action == 'upload':
+        mapping = import_student_map('1Nj4Lvldz_94PlHmRUrSfl_5rm6tgm5JnkCob-p63PGk', 'cs315') # FIXME
+        for cs in canvas_scores:
+            cs['sis_login_id'] = mapping[cs['github']]
+        canvas_upload(cfg.canvas_course_name, cfg.project, canvas_scores)
 
 if __name__ == "__main__":
     main()

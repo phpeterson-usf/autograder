@@ -4,7 +4,11 @@ import requests
 import sys
 import toml
 
-verbose = False
+
+_verbose = False
+def verbose(s):
+    if _verbose:
+        print(s)
 
 
 def fatal(s):
@@ -13,16 +17,15 @@ def fatal(s):
 
 
 def not_found(s):
-    fatal('not found: {}'.format(s))
+    fatal(f'not found: {s}')
 
 
 def canvas_config():
-    # Load IDs for courses, assignments, and students from config file
+    # Load Canvas hostname and access token from config file
     toml_path = Path.home() / '.config' / 'canvas' / 'config.toml'
     with open(toml_path) as f:
         config = toml.loads(f.read())
-        if verbose:
-            print(config)
+        verbose(config)
     return config
 
 
@@ -31,11 +34,10 @@ def auth_header(config):
     return {'Authorization': 'Bearer {}'.format(config['access_token'])}
 
 
-# Add the hostname and access token to a path, creating a requestable URL
+# Combine the hostname and path, creating a requestable URL
 def canvas_url(config, path):
     url = 'https://{}/{}'.format(config['host_name'], path)
-    if verbose:
-        print(url)
+    verbose(url)
     return url
 
 
@@ -47,8 +49,7 @@ def canvas_url_get(config, url):
     if response.status_code != requests.codes.ok:
         fatal('{} returned {}'.format(url, response.status_code))
     obj = json.loads(response.text)
-    if verbose:
-        print(json.dumps(obj, indent=4, sort_keys=True))
+    verbose(json.dumps(obj, indent=4, sort_keys=True))
     return obj
 
 
@@ -101,8 +102,7 @@ def canvas_course_get(config, course_name):
 
     if not course_id:
         not_found(course_name)
-    if verbose:
-        print('course_id: ', course_id)
+    verbose(f'course_id: {course_id}')
     return course_id
 
 
@@ -117,11 +117,11 @@ def canvas_assignment_get(config, course_id, assignment_name):
     for a in assignments:
         if a['name'] == assignment_name:
             assignment_id = a['id']
+            break
 
     if not assignment_id:
         not_found(assignment_name)
-    if verbose:
-        print('assignment_id: ', assignment_id)
+    verbose(f'assignment_id: {assignment_id}')
     return assignment_id
 
 
@@ -136,16 +136,44 @@ def canvas_enrollment_get(config, course_id, student_name):
     for s in students:
         if s['user']['login_id'] == student_name:
             user_id = s['user_id']
+            break
 
     if not user_id:
         not_found(student_name)
-    if verbose:
-        print('user_id: ', user_id)
+    verbose(f'user_id: {user_id}')
     return user_id
 
- 
+
+"""
+Given:
+1. The long name of the course as it's named in Canvas
+2. The name of an assignment as it's named in Canvas
+3. A list of dicts containing sis_login_id and score
+Upload the score to Canvas
+"""
+def canvas_upload(course_name, assignment_name, student_scores, debug=False):
+    _verbose = debug
+    config = canvas_config()
+    course_id = canvas_course_get(config, course_name)
+    assignment_id = canvas_assignment_get(config, course_id, assignment_name)
+
+    for s in student_scores:
+        student_id = canvas_enrollment_get(config, course_id, s['sis_login_id'])
+        print(s['sis_login_id'], end=' ')
+        ok = canvas_submission_put(config, course_id, assignment_id, student_id, s['score'])
+        print('ok' if ok else 'failed')
+
+
 # Test harness
 if __name__ == '__main__':
+    """
+    student_scores = []
+    student_scores.append({'sis_login_id': sys.argv[3], 'score': sys.argv[4]})
+
+    canvas_upload(sys.argv[1], sys.argv[2], student_scores)
+    """
+
+    # Load hostname and access token
     config = canvas_config()
 
     # In autograder I'll get each ID once for better performance
@@ -163,4 +191,5 @@ if __name__ == '__main__':
         if ok:
             print('ok')
         else:
-            print('failed: {}', status_code)
+            print('failed: {}', sys.argv[4])
+
