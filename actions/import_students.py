@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import csv
+from pathlib import Path
 import requests
 import sys
 from tomlkit import parse
 from tomlkit import dumps
 
-from config import config_path, config_temp_path
+from actions.config import config_path, config_temp_path
 
 # Download list of students from a Google Sheets spreadsheet
 # ss_id: document ID out of the URL, e.g. "1Nj4Lvldz_94PlHmRUrSfl_5rm6tgm5JnkCob-p63PGk"
@@ -57,15 +58,6 @@ def import_students(ss_id, tab_name):
 
     if students:
         _update(students)
-
-
-# Public API to import a mapping between GitHub username and SIS Login ID
-def import_student_map(ss_id, tab_name)
-    reader = _download(ss_id, tab_name)
-    mapping = {}
-    for row in reader:
-        mapping[row['GitHub']] = row['SIS Login ID']
-    return mapping
 
 
 # Test harness

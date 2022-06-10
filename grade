@@ -9,7 +9,9 @@ import subprocess
 import sys
 import toml
 
-from actions.canvas import canvas_upload
+from actions.canvas import Canvas, CanvasMapper
+
+# from actions.import_students import import_student_map
 
 def fatal(s):
     print(s)
@@ -17,7 +19,7 @@ def fatal(s):
 
 
 def cmd_exec(args, wd=None, shell=False):
-    return subprocess.run(args, timeout=30, check=True, cwd=wd, capture_output=True, shell=shell)
+    return subprocess.run(args, timeout=5, check=True, cwd=wd, capture_output=True, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
@@ -70,7 +72,6 @@ class ProjectConfig:
 class Config:
     def __init__(self, d):
         self.action = d['action']           # required
-        self.canvas_course_name = d['canvas_course_name']
         self.credentials = d['credentials'] # required
         self.date = d['date']               # optional
         self.digital = os.path.expanduser(d.get('digital')) # optional path to Digital directory
@@ -266,9 +267,8 @@ def print_tests(tests):
 class Repo:
     def __init__(self, cfg, **kwargs):
         # calculate the local and remote for this repo
-        student = kwargs.get('student')
-        if student:
-            self.student = student
+        self.student = kwargs.get('student')
+        if self.student:
             pg = cfg.project + '-' + self.student
             self.local = os.path.join('github.com', cfg.org, pg)
             # set up remote repo for clone
@@ -402,15 +402,7 @@ class Repo:
         score = 0;
         for r in self.results:
             score += r['score'];
-        return score
-
-    def get_canvas_score(self):
-        canvas_score = {
-            'github': self.student
-            'score': self.get_score()
-        }
-        return canvas_score
-        
+        return score        
 
 
 def print_score_frequency(repos, test_cases):
@@ -436,6 +428,8 @@ def main():
     args = Config.parse_args('config.toml')
     cfg = Config(args)
     test_cases = load_tests(cfg)
+    canvas = Canvas(cfg.project, cfg.verbose)
+    canvas_mapper = CanvasMapper()
 
     if cfg.action == 'names':
         print_tests(test_cases)
@@ -443,7 +437,6 @@ def main():
 
     # Build list of repos to run, either from local or list of students
     repos = []
-    canvas_scores = []
     if cfg.action == 'test':
         # One local repo
         if not os.path.isdir(cfg.local):
@@ -481,8 +474,10 @@ def main():
                 repo.test(test_cases, cfg.test_name)
                 repo.print_results(longest)
                 if cfg.action == 'upload':
-                    # Accumulate scores for upload
-                    canvas_scores.append(repo.get_canvas_score())             
+                    # Look up login_id from GitHub name
+                    login_id = canvas_mapper.lookup(repo.student)
+                    # Accumulate scores for later upload
+                    canvas.add_score(login_id, repo.get_score())
         except Exception as e:
             print_red(repo.label + ' ' + str(e), '\n')
             continue
@@ -491,10 +486,8 @@ def main():
     if cfg.action == 'class':
         print_score_frequency(repos, test_cases)
     elif cfg.action == 'upload':
-        mapping = import_student_map('1Nj4Lvldz_94PlHmRUrSfl_5rm6tgm5JnkCob-p63PGk', 'cs315') # FIXME
-        for cs in canvas_scores:
-            cs['sis_login_id'] = mapping[cs['github']]
-        canvas_upload(cfg.canvas_course_name, cfg.project, canvas_scores)
+        canvas.upload()
+
 
 if __name__ == "__main__":
     main()

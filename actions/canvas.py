@@ -1,14 +1,17 @@
+import csv
 import json
 from pathlib import Path
+from pprint import PrettyPrinter
 import requests
 import sys
 import toml
 
 
+pp = PrettyPrinter(indent=4)
 _verbose = False
 def verbose(s):
     if _verbose:
-        print(s)
+        pp.pprint(s)
 
 
 def fatal(s):
@@ -20,176 +23,192 @@ def not_found(s):
     fatal(f'not found: {s}')
 
 
-def canvas_config():
-    # Load Canvas hostname and access token from config file
+def load_canvas_config():
     toml_path = Path.home() / '.config' / 'canvas' / 'config.toml'
-    with open(toml_path) as f:
-        config = toml.loads(f.read())
-        verbose(config)
-    return config
+    if toml_path.exists():
+        with open(toml_path) as f:
+            config = toml.loads(f.read())
+            verbose(config)
+            return config
 
 
-# The Authorization header is shared between GET and PUT
-def auth_header(config):
-    return {'Authorization': 'Bearer {}'.format(config['access_token'])}
+# Helper class to keep a map between GitHub user name and login_id
+class CanvasMapper:
+    def __init__(self):
+        self.mapping = {}
+        cfg = load_canvas_config()
+        csv_path = Path.home() / '.config' / 'canvas' / cfg['map_fname']
+        with open(csv_path) as f:
+            reader = csv.DictReader(f.read().splitlines())
+            for row in reader:
+                self.mapping[row[cfg['github_col_name']]] = row[cfg['login_col_name']]
+        verbose(self.mapping)
+
+    def lookup(self, github_name):
+        return self.mapping[github_name]
 
 
-# Combine the hostname and path, creating a requestable URL
-def canvas_url(config, path):
-    url = 'https://{}/{}'.format(config['host_name'], path)
-    verbose(url)
-    return url
+# Handles GET and PUT of scores to Canvas
+class Canvas:
+    def __init__(self, assignment_name, v=False):
+        global _verbose
+        _verbose = v
+        self.scores = []
+        self.assignment_name = assignment_name
 
-
-# Use requests to GET the URL
-def canvas_url_get(config, url):
-    # TODO: replace hard-coded access token with dynamic OAuth token
-    headers = auth_header(config)
-    response = requests.get(url, headers=headers)
-    if response.status_code != requests.codes.ok:
-        fatal('{} returned {}'.format(url, response.status_code))
-    obj = json.loads(response.text)
-    verbose(json.dumps(obj, indent=4, sort_keys=True))
-    return obj
-
-
-# Create the URL for GET and PUT methods using Canvas IDs
-# http://staff.createthenext.com/doc/api/submissions.html#method.submissions_api.update
-def canvas_submission_url(config, course_id, assignment_id, student_id):
-    path = 'api/v1/courses/{}/assignments/{}/submissions/{}'.format(
-        course_id,
-        assignment_id,
-        student_id
-    )
-    return canvas_url(config, path)
+        cfg = load_canvas_config()
+        self.access_token = cfg['access_token']
+        self.host_name = cfg['host_name']
+        self.course_name = cfg['course_name']
     
 
-# Download the grade for the specified course/assignment/student
-def canvas_submission_get(config, course_id, assignment_id, student_id):
-    url = canvas_submission_url(config, course_id, assignment_id, student_id)
-    d = canvas_url_get(config, url)
-    return d['grade']
+    def make_auth_header(self):
+        # The Authorization header is shared between GET and PUT
+        return {
+            'Authorization': 'Bearer {}'.format(self.access_token)
+        }
 
 
-# Upload the new score for the specified course/assignment/student
-# https://community.canvaslms.com/t5/Canvas-Developers-Group/Add-grade-using-canvas-submission-API/td-p/60436
-def canvas_submission_put(config, course_id, assignment_id, student_id, score):
-    url = canvas_submission_url(config, course_id, assignment_id, student_id)
-    data = {'submission[posted_grade]': score}
-    headers = auth_header(config)
-
-    response = requests.put(url, data=data, headers=headers)
-    if verbose and response.status_code != requests.codes.ok:
-        d = json.loads(response.text)
-        print(json.dumps(d, indent=4, sort_keys=True))
-
-    return response.status_code == requests.codes.ok
+    def make_url(self, path):
+        # Combine the hostname and path, creating a requestable URL
+        url = 'https://{}/{}'.format(self.host_name, path)
+        verbose(url)
+        return url
 
 
-# Get the ID for the named course
-# Course name in Canvas must match the given name
-# I tried to use enrollment term but only root_users have those :-(
-def canvas_course_get(config, course_name):
-    course_id = None
-    path = 'api/v1/courses'
-    url = canvas_url(config, path)
-
-    courses = canvas_url_get(config, url)
-    for c in courses:
-        if c['name'] == course_name:
-            course_id = c['id']
-            break
-
-    if not course_id:
-        not_found(course_name)
-    verbose(f'course_id: {course_id}')
-    return course_id
+    # Use requests to GET the URL
+    def get_url(self, url):
+        # TODO: replace hard-coded access token with dynamic OAuth token
+        headers = self.make_auth_header()
+        response = requests.get(url, headers=headers)
+        if response.status_code != requests.codes.ok:
+            fatal('{} returned {}'.format(url, response.status_code))
+        obj = json.loads(response.text)
+        verbose(json.dumps(obj, indent=4, sort_keys=True))
+        return obj
 
 
-# Given a course, get the ID for the named assignment
-# Assignment name in Canvas must match the given name
-def canvas_assignment_get(config, course_id, assignment_name):
-    assignment_id = None
-    path = f'api/v1/courses/{course_id}/assignments'
-    url = canvas_url(config, path)
+    # Create the URL for GET and PUT methods using Canvas IDs
+    def make_submission_url(self, course_id, assignment_id, student_id):
+        path = 'api/v1/courses/{}/assignments/{}/submissions/{}'.format(
+            course_id,
+            assignment_id,
+            student_id
+        )
+        return self.make_url(path)
+    
 
-    assignments = canvas_url_get(config, url)
-    for a in assignments:
-        if a['name'] == assignment_name:
-            assignment_id = a['id']
-            break
-
-    if not assignment_id:
-        not_found(assignment_name)
-    verbose(f'assignment_id: {assignment_id}')
-    return assignment_id
+    # Download the grade for the specified course/assignment/student
+    def get_submission(self, course_id, assignment_id, student_id):
+        url = self.make_submission_url(course_id, assignment_id, student_id)
+        obj = self.get_url(url)
+        return obj['grade']
 
 
-# Given a course, get the ID for the named student
-# SIS Login ID in Canvas must match the given name
-def canvas_enrollment_get(config, course_id, student_name):
-    user_id = None
-    path = f'api/v1/courses/{course_id}/enrollments'
-    url = canvas_url(config, path)
+    # Upload the grade for the specified course/assignment/student
+    def put_submission(self, course_id, assignment_id, student_id, score):
+        url = self.make_submission_url(course_id, assignment_id, student_id)
+        data = {'submission[posted_grade]': score}
+        headers = self.make_auth_header()
 
-    students = canvas_url_get(config, url)
-    for s in students:
-        if s['user']['login_id'] == student_name:
-            user_id = s['user_id']
-            break
+        response = requests.put(url, data=data, headers=headers)
+        if verbose and response.status_code != requests.codes.ok:
+            d = json.loads(response.text)
+            print(json.dumps(d, indent=4, sort_keys=True))
 
-    if not user_id:
-        not_found(student_name)
-    verbose(f'user_id: {user_id}')
-    return user_id
+        return response.status_code == requests.codes.ok
 
 
-"""
-Given:
-1. The long name of the course as it's named in Canvas
-2. The name of an assignment as it's named in Canvas
-3. A list of dicts containing sis_login_id and score
-Upload the score to Canvas
-"""
-def canvas_upload(course_name, assignment_name, student_scores, debug=False):
-    _verbose = debug
-    config = canvas_config()
-    course_id = canvas_course_get(config, course_name)
-    assignment_id = canvas_assignment_get(config, course_id, assignment_name)
+    # Get the ID for the named course, e.g. "Computer Architecture - 01 (Spring 2022)"
+    def get_course_id(self, course_name):
+        course_id = None
+        path = 'api/v1/courses'
+        url = self.make_url(path)
 
-    for s in student_scores:
-        student_id = canvas_enrollment_get(config, course_id, s['sis_login_id'])
-        print(s['sis_login_id'], end=' ')
-        ok = canvas_submission_put(config, course_id, assignment_id, student_id, s['score'])
-        print('ok' if ok else 'failed')
+        courses = self.get_url(url)
+        for c in courses:
+            if c['name'] == course_name:
+                course_id = c['id']
+                break
+
+        if not course_id:
+            not_found(course_name)
+        verbose(f'course_id: {course_id}')
+        return course_id
+
+
+    # Get the ID for the named assignment, e.g. 'lab01'
+    def get_assignment_id(self, course_id, assignment_name):
+        assignment_id = None
+        path = f'api/v1/courses/{course_id}/assignments'
+        url = self.make_url(path)
+
+        assignments = self.get_url(url)
+        for a in assignments:
+            if a['name'] == assignment_name:
+                assignment_id = a['id']
+                break
+
+        if not assignment_id:
+            not_found(assignment_name)
+        verbose(f'assignment_id: {assignment_id}')
+        return assignment_id
+
+
+    # Download the list of students enrolled in the given course
+    def get_enrollment(self, course_id):
+        user_id = None
+        # The enrollment API is paginated. 50 is "big enough" for our purposes
+        path = f'api/v1/courses/{course_id}/enrollments?per_page=50'
+        url = self.make_url(path)
+
+        return self.get_url(url)
+
+
+    # Add a Canvas user_id to each score dict so we can use the submission API
+    def add_user_ids(self, scores, students):
+        for score in scores:
+            login_id = score['login_id']
+            for student in students:
+                if student['user']['login_id'] == login_id:
+                    score['user_id'] = student['user_id']
+                    break
+
+
+    # Accumulate scores for later upload
+    def add_score(self, login_id, score):
+        score = {
+            'login_id': login_id,
+            'score': score
+        }
+        self.scores.append(score)
+
+
+    # Upload the accumulated scores to Canvas
+    def upload(self):
+        course_id = self.get_course_id(self.course_name)
+        assignment_id = self.get_assignment_id(course_id, self.assignment_name)
+
+        students = self.get_enrollment(course_id)
+        self.add_user_ids(self.scores, students)
+
+        for s in self.scores:
+            print('Uploading {} {}'.format(s['login_id'], s['score']), end=' ')
+            if not 'user_id' in s:
+                print('not enrolled')
+                continue
+            ok = self.put_submission(course_id, assignment_id, s['user_id'], s['score'])
+            print('ok' if ok else 'failed')
 
 
 # Test harness
 if __name__ == '__main__':
-    """
-    student_scores = []
-    student_scores.append({'sis_login_id': sys.argv[3], 'score': sys.argv[4]})
+    # Comes from config file: course_name = sys.argv[1]
+    assignment_name = sys.argv[1]
+    login_id = sys.argv[2]
+    score = sys.argv[3]
+    c = Canvas(assignment_name)
 
-    canvas_upload(sys.argv[1], sys.argv[2], student_scores)
-    """
+    c.add_score(login_id, score)
 
-    # Load hostname and access token
-    config = canvas_config()
-
-    # In autograder I'll get each ID once for better performance
-    method = sys.argv[1]
-    course_id = canvas_course_get(config, sys.argv[2])
-    assignment_id = canvas_assignment_get(config, course_id, sys.argv[3])
-    student_id = canvas_enrollment_get(config, course_id, sys.argv[4])
-
-    if method == 'get':
-        grade = canvas_submission_get(config, course_id, assignment_id, student_id)
-        print(grade)
-    elif method == 'put':
-        score = sys.argv[5]
-        ok = canvas_submission_put(config, course_id, assignment_id, student_id, score)
-        if ok:
-            print('ok')
-        else:
-            print('failed: {}', sys.argv[4])
-
+    c.upload()
