@@ -106,10 +106,13 @@ class Canvas:
 
 
     # Upload the grade for the specified course/assignment/student
-    def put_submission(self, course_id, assignment_id, student_id, score):
+    def put_submission(self, course_id, assignment_id, student_id, score, comment):
         url = self.make_submission_url(course_id, assignment_id, student_id)
-        data = {'submission[posted_grade]': score}
         headers = self.make_auth_header()
+        data = {
+            'submission[posted_grade]': score,
+            'comment[text_comment]': comment
+        }
 
         response = requests.put(url, data=data, headers=headers)
         if verbose and response.status_code != requests.codes.ok:
@@ -176,10 +179,11 @@ class Canvas:
 
 
     # Accumulate scores for later upload
-    def add_score(self, login_id, score):
+    def add_score(self, login_id, score, comment):
         score = {
             'login_id': login_id,
-            'score': score
+            'score': score,
+            'comment': comment
         }
         self.scores.append(score)
 
@@ -197,7 +201,8 @@ class Canvas:
             if not 'user_id' in s:
                 print('not enrolled')
                 continue
-            ok = self.put_submission(course_id, assignment_id, s['user_id'], s['score'])
+            ok = self.put_submission(course_id, assignment_id, 
+                s['user_id'], s['score'], s['comment'])
             print('ok' if ok else 'failed')
 
 
@@ -207,8 +212,8 @@ if __name__ == '__main__':
     assignment_name = sys.argv[1]
     login_id = sys.argv[2]
     score = sys.argv[3]
+    comment = sys.argv[4]
+
     c = Canvas(assignment_name)
-
-    c.add_score(login_id, score)
-
+    c.add_score(login_id, score, comment)
     c.upload()
