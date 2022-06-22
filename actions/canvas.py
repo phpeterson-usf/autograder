@@ -23,40 +23,32 @@ def not_found(s):
     fatal(f'not found: {s}')
 
 
-def load_canvas_config():
-    toml_path = Path.home() / '.config' / 'canvas' / 'config.toml'
-    if toml_path.exists():
-        with open(toml_path) as f:
-            config = toml.loads(f.read())
-            verbose(config)
-            return config
-
-
 # Helper class to keep a map between GitHub user name and login_id
 class CanvasMapper:
-    def __init__(self):
+    def __init__(self, cfg):
         self.mapping = {}
-        cfg = load_canvas_config()
-        csv_path = Path.home() / '.config' / 'canvas' / cfg['map_fname']
-        with open(csv_path) as f:
+        self.cfg = cfg
+        with open(cfg['map_path']) as f:
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
                 self.mapping[row[cfg['github_col_name']]] = row[cfg['login_col_name']]
         verbose(self.mapping)
 
     def lookup(self, github_name):
-        return self.mapping[github_name]
+        if github_name in self.mapping:
+            return self.mapping[github_name]
+        print('no mapping for ' + github_name)
+        return ''
 
 
 # Handles GET and PUT of scores to Canvas
 class Canvas:
-    def __init__(self, assignment_name, v=False):
+    def __init__(self, cfg, assignment_name, v=False):
         global _verbose
         _verbose = v
         self.scores = []
         self.assignment_name = assignment_name
 
-        cfg = load_canvas_config()
         self.access_token = cfg['access_token']
         self.host_name = cfg['host_name']
         self.course_name = cfg['course_name']
@@ -192,7 +184,6 @@ class Canvas:
     def upload(self):
         course_id = self.get_course_id(self.course_name)
         assignment_id = self.get_assignment_id(course_id, self.assignment_name)
-
         students = self.get_enrollment(course_id)
         self.add_user_ids(self.scores, students)
 

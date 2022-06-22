@@ -2,76 +2,28 @@
 
 import argparse
 import difflib
+import json
 import os
 import pathlib
-import string
 import subprocess
 import sys
 import toml
+from pprint import PrettyPrinter
+
+from actions.cmd import *
+from actions.util import *
 
 from actions.canvas import Canvas, CanvasMapper
+from actions.git import Git
+from actions.test import Test
 
 # from actions.import_students import import_student_map
 
-def fatal(s):
-    print(s)
-    sys.exit(-1)
-
-
-def cmd_exec(args, wd=None, shell=False):
-    return subprocess.run(args, timeout=5, check=True, cwd=wd, capture_output=True, shell=shell)
-
-
-def cmd_exec_rc(args, wd=None):
-    proc = cmd_exec(args, wd)
-    return proc.returncode
-
-
-def cmd_exec_capture(args, wd=None, path=None, shell=False):
-    try:
-        proc = cmd_exec(args, wd, shell)
-    except subprocess.CalledProcessError as e:
-        return str(e)
-
-    if (path):
-        # capture output written to path
-        f = open(path, 'r')
-        output = f.read()
-        f.close()
-    else:
-        try:
-            # capture output written to stdout
-            output = proc.stdout.decode('utf-8')
-            return output.rstrip('\n')
-        except UnicodeDecodeError as e:
-            print('Output contains non-printable characters')
-            return ''
-
-
-def print_green(s, e=''):
-    print('\033[92m' + s + '+' + ' \033[0m', end=e, flush=True)
-
-
-def print_red(s, e=''):
-    print('\033[91m' + s + '-' + ' \033[0m', end=e, flush=True)
-
-
-def load_toml(fname):
-    with open(fname) as f:
-        try:
-            return toml.load(f)
-        except Exception as e:
-            fatal(f'{fname}: {e}')
-
-
-class ProjectConfig:
-    def __init__(self, d):
-        self.build = d.get('build', 'make')
-        self.strip_output = d.get('strip_output')
 
 class Config:
     def __init__(self, d):
         self.action = d['action']           # required
+        self.canvas = d.get('canvas')
         self.credentials = d['credentials'] # required
         self.date = d['date']               # optional
         self.digital = os.path.expanduser(d.get('digital')) # optional path to Digital directory
@@ -81,8 +33,8 @@ class Config:
         self.project = d['project']         # required
         self.project_cfg = None             # comes from project toml
         self.ioprint = d['ioprint']         # optional
-        self.testspath = os.path.expanduser(d.get('testspath')) # required
-        self.project_tests = os.path.join(self.testspath, self.project)        
+        self.tests_path = os.path.expanduser(d.get('tests_path')) # required
+        self.project_tests = os.path.join(self.tests_path, self.project)        
         self.students = d.get('students')   # could get students or local
         self.test_name = d['name']          # optional
         self.verbose = d['verbose']         # optional, defaults to False
@@ -118,7 +70,7 @@ class Config:
                 f.write('#     "github_id_2",\n')
                 f.write('#     "github_id_3"\n')
                 f.write('# ]\n')
-                f.write('# testspath = "~/tests"\n')
+                f.write('# tests_path = "~/tests"\n')
                 f.write('# verbose = false\n')
                 f.write('# verbose = true\n')
 
@@ -148,8 +100,8 @@ class Config:
             default=defaults.get('print', False))
         p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
             default=defaults.get('students', None))
-        p.add_argument('-t', '--testspath', help='Path to tests',
-            default=defaults.get('testspath', '~/tests'))
+        p.add_argument('-t', '--tests_path', help='Path to tests',
+            default=defaults.get('tests_path', '~/tests'))
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output when they don\'t match',
             default=defaults.get('verbose', False))
         p.add_argument('-vv', '--verbose2', action='store_true', help='Print actual and expected output whether they match or not',
@@ -157,112 +109,11 @@ class Config:
         
         d = vars(p.parse_args())
         Config.validate_args(d)
+
+        d['canvas'] = defaults['canvas']  # TODO gross
+        d['canvas']['map_path'] = os.path.expanduser(defaults['canvas']['map_path'])
         return d
 
-
-class TestCase:
-    trans_table = str.maketrans(dict.fromkeys(string.whitespace))
-    def __init__(self, cfg, d):
-        self.validate(d)
-        self.cmd_line = []
-        for i in d['input']:
-            if '$project_tests' in i:
-                param = i.replace('$project_tests', cfg.project_tests)
-            elif '$project' in i:
-                param = i.replace('$project', cfg.project)
-            elif '$digital' in i:
-                param = i.replace('$digital', cfg.digital)
-            else:
-                param = i
-            self.cmd_line.append(param)
-        self.expected = d.get('expected', None)
-        self.name = d.get('name', None)
-        self.output = d.get('output', 'stdout')
-        self.rubric = d.get('rubric', None)
-        self.strip_output = cfg.project_cfg.strip_output
-        self.verbose = cfg.verbose
-        self.verbose2 = cfg.verbose2
-        self.ioprint = cfg.ioprint
-
-
-    def validate(self, d):
-        test_name = d.get('name', 'unknown')
-        if type(d.get('rubric')) is not int:
-            fatal('Rubric for test \"{test_name}\" must be an integer')
-        if type(d.get('input')) is not list:
-            fatal(f'Input for test \"{test_name}\" must be a list')
-        if type(d.get('expected')) is not str:
-            fatal(f'Expected output for test \"{test_name}\" must be a string')
-
-
-    def get_actual(self, local):
-        try:
-            if self.output == 'stdout':
-                # get actual output from stdout
-                act = cmd_exec_capture(self.cmd_line, local)
-            else:
-                # ignore stdout and get actual output from the specified file
-                path = os.path.join(local, self.output)
-                act = cmd_exec_capture(self.cmd_line, local, path)
-        except (FileNotFoundError, subprocess.TimeoutExpired) as err:
-            print(f'{self.name}: {err}')
-            return ''
-
-        if self.strip_output:
-            act = act.replace(self.strip_output, '')
-        return act
-
-    def prepare_cmd_line(self, cmd_line):
-        cmd_line_prepared = [cmd_line[0]]
-        for arg in cmd_line[1:]:
-            if ' ' in arg:
-                arg = '"' + arg + '"'
-            cmd_line_prepared.append(arg)
-        return cmd_line_prepared
-
-    def make_lines(self, text):
-        text_lines = []
-        for line in text.split('\n'):
-            text_lines.append(line.strip() + '\n')
-        return text_lines
-        
-    def match_expected(self, actual):
-        # rstrip to remove extra trailing newline
-        exp = self.make_lines(self.expected.rstrip())
-        act = self.make_lines(actual.rstrip())
-
-        cmd_line = self.prepare_cmd_line(self.cmd_line)
-        cmd_line_str = ' '.join(cmd_line)
-
-        if self.verbose2:
-            print(f"===[{self.name}]===expected\n$ {cmd_line_str}\n{exp}")
-            print()
-            print(f"===[{self.name}]===actual\n$ {cmd_line_str}\n{act}")
-            print()
-        if self.verbose and (act != exp):
-            print(f"===[{self.name}]===diff\n$ {cmd_line_str}")
-            diff = difflib.context_diff(exp, act, fromfile='expected', tofile='actual')
-            for line in diff:
-                print(line, end='')
-            print()
-            
-        if self.ioprint:
-            print(f"$ {cmd_line_str}\n{actual}")
-        return act == exp
-
-def load_tests(cfg):
-    tests_file = os.path.join(cfg.project_tests, cfg.project + '.toml', )
-    toml_input = load_toml(tests_file)
-    cfg.project_cfg = ProjectConfig(toml_input.get('project', {}))
-    test_cases = []
-    for t in toml_input['tests']:
-        test_cases.append(TestCase(cfg, t))
-
-    return test_cases
-
-def print_tests(tests):
-    for tc in tests:
-        print(tc.name)
 
 class Repo:
     def __init__(self, cfg, **kwargs):
@@ -270,7 +121,7 @@ class Repo:
         self.student = kwargs.get('student')
         if self.student:
             pg = cfg.project + '-' + self.student
-            self.local = os.path.join('github.com', cfg.org, pg)
+            self.local = os.path.join('.', pg)
             # set up remote repo for clone
             if cfg.credentials == 'https':
                 self.remote = 'https://github.com/'
@@ -283,159 +134,37 @@ class Repo:
         self.label = self.local.split('/')[-1]
         self.results = []
         self.verbose = cfg.verbose
-        self.build_plan = cfg.project_cfg.build
         self.date = cfg.date
 
-    def build(self):
-        if self.build_plan == 'none':
-            return 0
-        elif self.build_plan == 'make':
-            return cmd_exec_rc(['make', '-C', self.local])
-        else:
-            fatal(f'Unknown build plan: \"{self.build_plan}\"')
-
-    def get_default_branch(self):
-        branches = subprocess.Popen(
-            ['git', 'branch', '--remotes', '--list', '*/HEAD'],
-            stdout=subprocess.PIPE,
-            cwd=self.local
-        )
-        cut = subprocess.Popen(
-            ['cut', '-d/', '-f3'],
-            stdin=branches.stdout,
-            stdout=subprocess.PIPE,
-        )
-        branch = cut.stdout.read().decode("utf-8").strip()
-        return branch
-
-    def get_commit_hash(self, branch):
-        # append time if not provided on the command line
-        time = '' if ' ' in self.date else ' 00:00:00'
-        deadline = '\'' + self.date + time + '\''
-        cmd = ['git', 'rev-list', '-n', '1', '--first-parent', 
-            "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
-        lines =  cmd_exec_capture(cmd, wd=self.local)
-        if len(lines) == 0:
-            print(f'no commits before {deadline}', end='')
-            return None
-        split_lines = lines.split("\n")
-        commit_line = split_lines[0]
-        date_line = split_lines[1]
-        h = commit_line.split()[1][0:7]
-        print(f'branch: {branch}, hash: {h}, date: {date_line}', end='')
-        return h
-
-    def clone(self):
-        if self.remote is None:
-            raise Exception(self.label + ' no remote to clone')
-        if os.path.isdir(self.local):
-            print('Already exists: ' + self.local)
-            return 0
-        rc = cmd_exec_rc(['git', 'clone', self.remote, self.local])
-        if rc != 0:
-            print('No repo: ' + self.remote)
-            return 0
-        print(f'{self.local} ', end='')
-        if self.date:
-            branch = self.get_default_branch()
-            commit_hash = self.get_commit_hash(branch)
-            if commit_hash:
-                cmd_exec_rc(['git', 'checkout', commit_hash], wd=self.local)
-        print()
-
-    def pull(self):
-        print(f'{self.local }')
-        branch = self.get_default_branch()
-        cmd_exec_rc(['git', 'checkout', branch], wd=self.local)
-        cmd_exec_rc(['git', 'pull'], wd=self.local)
-    
     def exec_cmd(self, cmd):
         print(self.local, end = '')
         output = cmd_exec_capture(cmd, wd=self.local, shell=True)
         print(output)
 
-    def test_one(self, test_case):
-        score = 0
-        actual = test_case.get_actual(self.local)
-        if test_case.match_expected(actual):
-            score = test_case.rubric
-
-        # record score for later printing
-        result = {'test': test_case, 'score': score}
-        if self.verbose:
-            # or print now if testing is slow, like in Digital
-            self.print_one_result(result)
-        self.results.append(result)
-
-
-    def test(self, test_cases, test_name):
-        if test_name is not None:
-            for tc in test_cases:
-                if tc.name == test_name:
-                    self.test_one(tc)
-        else:
-            for tc in test_cases:
-                self.test_one(tc)
-
-    def print_one_result(self, res):
-        if res['score'] == 0:
-            print_red(res['test'].name)
-        else:
-            print_green(res['test'].name)
-
-    def print_results(self, longest):
-        print(self.label, end='')
-        for n in range(longest - len(self.label)):
-            print(' ', end='')
-
-        earned = 0
-        avail = 0
-        for r in self.results:
-            rubric = r['test'].rubric
-            avail += rubric
-            if r['score'] != 0:
-                earned += rubric
-            self.print_one_result(r)
-        print(f"{earned}/{avail}")
-
-    def get_score(self):
-        score = 0;
-        for r in self.results:
-            score += r['score'];
-        return score        
-
-
-def print_score_frequency(repos, test_cases):
-    avail = 0  # points available
-    for tc in test_cases:
-        avail += tc.rubric
-
-    repos.sort(key=Repo.get_score, reverse=True)
-    freqs = {}  # key: score, value: frequency
-    for repo in repos:
-        score = repo.get_score()
-        if not score in freqs:
-            freqs[score] = 0
-        freqs[score] += 1
-
-    print("\nScore frequency")
-    for score, freq in freqs.items():
-        pct = "{:.1f}".format(freq / len(repos) * 100)
-        print(f"{score}/{avail}: {freq}  ({pct}%)")
-
 
 def main():
     args = Config.parse_args('config.toml')
     cfg = Config(args)
-    test_cases = load_tests(cfg)
-    canvas = Canvas(cfg.project, cfg.verbose)
-    canvas_mapper = CanvasMapper()
 
-    if cfg.action == 'names':
-        print_tests(test_cases)
-        return 0;
+    if cfg.action == 'upload':
+        # Reconstitute 'grade class' results from previously-saved file
+        # This allows long-running test cases to be factored out
+        # of the upload process, which can also take some time
+        with open(cfg.project + '.json') as f:
+            data = f.read()
+            class_results = json.loads(data)
+        canvas = Canvas(cfg.canvas, cfg.project, cfg.verbose)
+        mapper = CanvasMapper(cfg.canvas)
+        for result in class_results:
+            login_id = mapper.lookup(result['student'])
+            canvas.add_score(login_id, result['score'], result['comment'])
+        canvas.upload()
+        return 0
 
-    # Build list of repos to run, either from local or list of students
+    tester = Test(cfg)
+    git = Git(cfg.org, cfg.project, cfg.credentials, cfg.date)
+
+    # Build list of repos to run, either from '.' or list of students
     repos = []
     if cfg.action == 'test':
         # One local repo
@@ -449,44 +178,44 @@ def main():
             repo = Repo(cfg, student=s)
             repos.append(repo)
     else:
-        print("Must either 'test' one repo, or give a list of students to 'clone', 'pull', 'class', or 'upload'")
+        print("Must either 'test' one repo, or give a list of students to 'clone', 'pull', or 'class'")
         return -1
 
     # Calc column width for justified printing
     longest = 0
     for r in repos:
-        l = len(r.label)
+        l = len(r.local)
         if l > longest:
             longest = l
     longest += 1
 
     # Run the specified actions for all of the repos
+    class_results = []
     for repo in repos:
+        print_justified(repo.local, longest)
         try:
             if cfg.action == 'clone':
-                repo.clone()
+                git.clone(repo.student)
             elif cfg.action == 'pull':
-                repo.pull()
+                git.pull(repo.student)
             elif cfg.action == 'exec':
                 repo.exec_cmd(cfg.exec_cmd)
-            elif cfg.action == 'class' or cfg.action == 'test' or cfg.action == 'upload':
-                repo.build()
-                repo.test(test_cases, cfg.test_name)
-                repo.print_results(longest)
-                if cfg.action == 'upload':
-                    # Look up login_id from GitHub name
-                    login_id = canvas_mapper.lookup(repo.student)
-                    # Accumulate scores for later upload
-                    canvas.add_score(login_id, repo.get_score())
+            elif cfg.action == 'class' or cfg.action == 'test':
+                repo_results = tester.test(repo.student, repo.local)
+                if cfg.action == 'class':
+                    class_results.append(repo_results)
         except Exception as e:
             print_red(repo.label + ' ' + str(e), '\n')
             continue
 
-    # Summary by score frequency
     if cfg.action == 'class':
-        print_score_frequency(repos, test_cases)
-    elif cfg.action == 'upload':
-        canvas.upload()
+        # Summary by score frequency
+        tester.print_histogram(class_results)
+
+        # Write test results out to temp file for later upload
+        class_json = json.dumps(class_results, indent=4, sort_keys=True)
+        with open(cfg.project + '.json', 'w') as f:
+            f.write(class_json)
 
 
 if __name__ == "__main__":
