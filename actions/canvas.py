@@ -4,8 +4,8 @@ from pathlib import Path
 from pprint import PrettyPrinter
 import requests
 import sys
-import toml
 
+from actions.util import *
 
 pp = PrettyPrinter(indent=4)
 _verbose = False
@@ -14,25 +14,36 @@ def verbose(s):
         pp.pprint(s)
 
 
-def fatal(s):
-    print(s)
-    exit(-1)
-
-
 def not_found(s):
     fatal(f'not found: {s}')
 
 
-# Helper class to keep a map between GitHub user name and login_id
+# Helper class to keep a map between GitHub user name and Canvas login_id
 class CanvasMapper:
-    def __init__(self, cfg):
+
+    default_cfg = {
+        'map_path': 'your CSV mapping file here',
+        'github_col_name': 'GitHub',
+        'login_col_name': 'SIS Login ID',
+    }
+
+
+    @staticmethod
+    def from_cfg(mapper_cfg):
+        return json.loads(json.dumps(mapper_cfg.__dict__), object_hook=CanvasMapper)
+
+
+    def __init__(self, mapper_cfg):
+        self.__dict__.update(mapper_cfg)
         self.mapping = {}
-        self.cfg = cfg
-        with open(cfg['map_path']) as f:
+
+        abs_path = Path(self.map_path).expanduser()
+        with open(abs_path) as f:
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
-                self.mapping[row[cfg['github_col_name']]] = row[cfg['login_col_name']]
+                self.mapping[row[self.github_col_name]] = row[self.login_col_name]
         verbose(self.mapping)
+
 
     def lookup(self, github_name):
         if github_name in self.mapping:
@@ -43,15 +54,26 @@ class CanvasMapper:
 
 # Handles GET and PUT of scores to Canvas
 class Canvas:
-    def __init__(self, cfg, assignment_name, v=False):
-        global _verbose
-        _verbose = v
-        self.scores = []
-        self.assignment_name = assignment_name
 
-        self.access_token = cfg['access_token']
-        self.host_name = cfg['host_name']
-        self.course_name = cfg['course_name']
+    default_cfg = {
+        'host_name': 'usfca.test.instructure.com or canvas.instructure.com',
+        'access_token': 'your access token here',
+        'course_name': 'e.g. Computer Architecture - 01 (Spring 2022)',
+    }
+
+    @staticmethod
+    def from_cfg(canvas_cfg, args):
+        canvas = json.loads(json.dumps(canvas_cfg.__dict__), object_hook=Canvas)
+        canvas.args = args
+        global _verbose
+        _verbose = args.verbose
+        return canvas
+
+
+    def __init__(self, canvas_cfg):
+        self.__dict__.update(canvas_cfg)
+        self.scores = []
+        self.args = None
     
 
     def make_auth_header(self):
@@ -183,20 +205,23 @@ class Canvas:
     # Upload the accumulated scores to Canvas
     def upload(self):
         course_id = self.get_course_id(self.course_name)
-        assignment_id = self.get_assignment_id(course_id, self.assignment_name)
+        assignment_id = self.get_assignment_id(course_id, self.args.project)
         students = self.get_enrollment(course_id)
         self.add_user_ids(self.scores, students)
 
         for s in self.scores:
             print('Uploading {} {}'.format(s['login_id'], s['score']), end=' ')
             if not 'user_id' in s:
-                print('not enrolled')
+                print_red('not enrolled', e='\n')
                 continue
             ok = self.put_submission(course_id, assignment_id, 
                 s['user_id'], s['score'], s['comment'])
-            print('ok' if ok else 'failed')
+            if ok:
+                print_green('ok', e='\n')
+            else:
+                print_red('failed', e='\n')
 
-
+"""
 # Test harness
 if __name__ == '__main__':
     # Comes from config file: course_name = sys.argv[1]
@@ -205,6 +230,7 @@ if __name__ == '__main__':
     score = sys.argv[3]
     comment = sys.argv[4]
 
-    c = Canvas(assignment_name)
+    c = Canvas.from_cfg(cfg)
     c.add_score(login_id, score, comment)
     c.upload()
+"""

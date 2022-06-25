@@ -2,7 +2,7 @@ import sys
 import toml
 
 def fatal(s):
-    print(s)
+    print_red(s, e='\n')
     sys.exit(-1)
 
 
@@ -38,3 +38,7 @@ def load_toml(fname):
             return toml.load(f)
         except Exception as e:
             fatal(f'{fname}: {e}')
+
+
+def make_local_path(project, student):
+    return f'{project}-{student}'

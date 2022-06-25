@@ -1,181 +1,74 @@
 #!/usr/bin/env python3
 
-import argparse
-import difflib
 import json
 import os
-import pathlib
-import subprocess
-import sys
-import toml
-from pprint import PrettyPrinter
+from pathlib import Path
 
 from actions.cmd import *
 from actions.util import *
 
 from actions.canvas import Canvas, CanvasMapper
+from actions.config import Args, Config
 from actions.git import Git
 from actions.test import Test
 
-# from actions.import_students import import_student_map
-
-
-class Config:
-    def __init__(self, d):
-        self.action = d['action']           # required
-        self.canvas = d.get('canvas')
-        self.credentials = d['credentials'] # required
-        self.date = d['date']               # optional
-        self.digital = os.path.expanduser(d.get('digital')) # optional path to Digital directory
-        self.exec_cmd = d.get('exec')       # optional
-        self.local = d.get('local')         # could get students or local
-        self.org = d['org']                 # required
-        self.project = d['project']         # required
-        self.project_cfg = None             # comes from project toml
-        self.ioprint = d['ioprint']         # optional
-        self.tests_path = os.path.expanduser(d.get('tests_path')) # required
-        self.project_tests = os.path.join(self.tests_path, self.project)        
-        self.students = d.get('students')   # could get students or local
-        self.test_name = d['name']          # optional
-        self.verbose = d['verbose']         # optional, defaults to False
-        self.verbose2 = d['verbose2']       # optional
-        if self.verbose2:
-            self.verbose = True
-
-    def validate_args(d):
-        if d['project'] is None:
-            fatal('project not given in config or command line')
-        if d['action'] == 'exec' and d.get('exec') is None:
-            fatal('-e \'cmd\' not given with exec')
-
-
-    def parse_args(fname):
-        # Check to see if ~/.config/grade/config.toml exits
-        # Create if it does not exit
-        # Create path if needed
-        home = str(pathlib.Path.home())
-        config_path = home + '/.config/grade'
-        config_file_path = pathlib.Path(config_path + '/config.toml')
-        if not config_file_path.exists():
-            pathlib.Path(config_path).mkdir(parents=True, exist_ok=True)
-            with open(config_file_path, 'w') as f:
-                f.write('# Default config.toml\n')
-                f.write('# credentials = "ssh"\n')
-                f.write('# credentials = "http"\n')                
-                f.write('# digital = "~/Digital/Digital.jar"\n')
-                f.write('# org = "github_org_name"\n')
-                f.write('# project = "lab01"\n')
-                f.write('# students = [\n')
-                f.write('#     "github_id_1",\n')
-                f.write('#     "github_id_2",\n')
-                f.write('#     "github_id_3"\n')
-                f.write('# ]\n')
-                f.write('# tests_path = "~/tests"\n')
-                f.write('# verbose = false\n')
-                f.write('# verbose = true\n')
-
-        # .toml file contains defaults. Command line args can override
-        defaults = load_toml(config_file_path)
-        p = argparse.ArgumentParser()
-        p.add_argument('action', type=str, choices=['class', 'clone', 'exec', 'import', 'names', 'pull', 'test', 'upload'])
-        p.add_argument('-c', '--credentials', choices=['https', 'ssh'], help='Github auth method',
-            default=defaults.get('credentials', 'ssh'))
-        p.add_argument('-ca', '--canvas_course_name', help='Canvas course name',
-            default=defaults.get('canvas_course_name', None))
-        p.add_argument('-d', '--digital', help='Path to digital.jar',
-            default=defaults.get('digital', '~/Digital/Digital.jar'))
-        p.add_argument('-da', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
-            default=defaults.get('date', None))
-        p.add_argument('-e', '--exec', help='Execute command in each repo (git pull or make clean)',
-            default=defaults.get('exec', None))
-        p.add_argument('-l', '--local', help='Local directory to test',
-            default=defaults.get('local', '.'))
-        p.add_argument('-n', '--name', help='Run test case with this name',
-            default=defaults.get('test_name', None))
-        p.add_argument('-o', '--org', help='Github Classroom Organization',
-            default=defaults.get('org', None))
-        p.add_argument('-p', '--project', help='Project name',
-            default=defaults.get('project', None))
-        p.add_argument('-i', '--ioprint', action='store_true', help='Print input and output',
-            default=defaults.get('print', False))
-        p.add_argument('-s', '--students', nargs='+', type=str, help='Student Github IDs',
-            default=defaults.get('students', None))
-        p.add_argument('-t', '--tests_path', help='Path to tests',
-            default=defaults.get('tests_path', '~/tests'))
-        p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output when they don\'t match',
-            default=defaults.get('verbose', False))
-        p.add_argument('-vv', '--verbose2', action='store_true', help='Print actual and expected output whether they match or not',
-            default=defaults.get('verbose2', False))
-        
-        d = vars(p.parse_args())
-        Config.validate_args(d)
-
-        d['canvas'] = defaults['canvas']  # TODO gross
-        d['canvas']['map_path'] = os.path.expanduser(defaults['canvas']['map_path'])
-        return d
-
 
 class Repo:
-    def __init__(self, cfg, **kwargs):
-        # calculate the local and remote for this repo
+    def __init__(self, project, **kwargs):
         self.student = kwargs.get('student')
         if self.student:
-            pg = cfg.project + '-' + self.student
+            pg = make_local_path(project, self.student)
             self.local = os.path.join('.', pg)
-            # set up remote repo for clone
-            if cfg.credentials == 'https':
-                self.remote = 'https://github.com/'
-            elif cfg.credentials == 'ssh':
-                self.remote = 'git@github.com:/'
-            self.remote += cfg.org + '/' + pg + '.git'
-        # allow -l/--local to override the local directory calculated above
-        if kwargs.get('local'):
-            self.local = kwargs['local'].rstrip('/')
-        self.label = self.local.split('/')[-1]
-        self.results = []
-        self.verbose = cfg.verbose
-        self.date = cfg.date
+        else:
+            self.local = kwargs.get('local')
+        self.label = self.local.split('/')[-1]    
 
-    def exec_cmd(self, cmd):
-        print(self.local, end = '')
-        output = cmd_exec_capture(cmd, wd=self.local, shell=True)
-        print(output)
+
+# Reconstitute 'grade class' results from previously-saved file
+# This allows long-running test cases to be factored out
+# of the upload process, which can also take some time
+def upload_class(cfg, args):
+    path = Path(args.project + '.json')
+    if not path.exists():
+        fatal(f'{path} does not exist. Run "grade class -p {args.project}" first')
+
+    with open(path) as f:
+        data = f.read()
+        class_results = json.loads(data)
+    canvas = Canvas.from_cfg(cfg.Canvas, args)
+    mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
+    for result in class_results:
+        # Map GitHub username to Canvas SIS Login ID using imported CSV file
+        login_id = mapper.lookup(result['student'])
+        canvas.add_score(login_id, result['score'], result['comment'])
+    canvas.upload()
 
 
 def main():
-    args = Config.parse_args('config.toml')
-    cfg = Config(args)
+    args = Args.from_cmdline()
 
-    if cfg.action == 'upload':
-        # Reconstitute 'grade class' results from previously-saved file
-        # This allows long-running test cases to be factored out
-        # of the upload process, which can also take some time
-        with open(cfg.project + '.json') as f:
-            data = f.read()
-            class_results = json.loads(data)
-        canvas = Canvas(cfg.canvas, cfg.project, cfg.verbose)
-        mapper = CanvasMapper(cfg.canvas)
-        for result in class_results:
-            login_id = mapper.lookup(result['student'])
-            canvas.add_score(login_id, result['score'], result['comment'])
-        canvas.upload()
+    # Run the actions which don't require a list of repos
+    if args.action == 'config':
+        Config.write_empty_config(args.instructor)
         return 0
 
-    tester = Test(cfg)
-    git = Git(cfg.org, cfg.project, cfg.credentials, cfg.date)
+    cfg = Config.from_file()
+    if args.action == 'upload':
+        upload_class(cfg, args)
+        return 0
+
+    tester = Test.from_cfg(cfg.Test, args)
+    git = Git.from_cfg(cfg.Git, args)
 
     # Build list of repos to run, either from '.' or list of students
     repos = []
-    if cfg.action == 'test':
-        # One local repo
-        if not os.path.isdir(cfg.local):
-            raise Exception(cfg.local + ' is not a directory')
-        repo = Repo(cfg, local=cfg.local)
+    if args.action == 'test':
+        repo = Repo(args.project, local='.')
         repos.append(repo)
-    elif cfg.students:
+    elif cfg.Config.students:
         # Make repo list from student list
-        for s in cfg.students:
-            repo = Repo(cfg, student=s)
+        for s in cfg.Config.students:
+            repo = Repo(args.project, student=s)
             repos.append(repo)
     else:
         print("Must either 'test' one repo, or give a list of students to 'clone', 'pull', or 'class'")
@@ -194,27 +87,28 @@ def main():
     for repo in repos:
         print_justified(repo.local, longest)
         try:
-            if cfg.action == 'clone':
+            if args.action == 'clone':
                 git.clone(repo.student)
-            elif cfg.action == 'pull':
+            elif args.action == 'pull':
                 git.pull(repo.student)
-            elif cfg.action == 'exec':
-                repo.exec_cmd(cfg.exec_cmd)
-            elif cfg.action == 'class' or cfg.action == 'test':
+            elif args.action == 'exec':
+                output = cmd_exec_capture(args.exec_cmd, wd=repo.local, shell=True)
+                print(output)
+            elif args.action == 'class' or args.action == 'test':
                 repo_results = tester.test(repo.student, repo.local)
-                if cfg.action == 'class':
+                if args.action == 'class':
                     class_results.append(repo_results)
         except Exception as e:
             print_red(repo.label + ' ' + str(e), '\n')
             continue
 
-    if cfg.action == 'class':
+    if args.action == 'class':
         # Summary by score frequency
         tester.print_histogram(class_results)
 
         # Write test results out to temp file for later upload
         class_json = json.dumps(class_results, indent=4, sort_keys=True)
-        with open(cfg.project + '.json', 'w') as f:
+        with open(args.project + '.json', 'w') as f:
             f.write(class_json)
 
 

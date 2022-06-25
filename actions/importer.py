@@ -9,6 +9,13 @@ from tomlkit import dumps
 
 from actions.config import config_path, config_temp_path
 
+class Importer:
+    default_cfg = {
+        'doc_id': 'your Google Doc ID here',
+        'page_name': 'Sheet 1',
+    }
+
+
 # Download list of students from a Google Sheets spreadsheet
 # ss_id: document ID out of the URL, e.g. "1Nj4Lvldz_94PlHmRUrSfl_5rm6tgm5JnkCob-p63PGk"
 # ss_name: name of the spreadsheet tab

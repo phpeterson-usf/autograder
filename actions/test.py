@@ -1,3 +1,4 @@
+import json
 import os
 from pprint import PrettyPrinter
 import string
@@ -9,26 +10,23 @@ from actions.util import *
 
 # One test case out of the list in the TOML test case file
 class TestCase:
-    def __init__(self, cfg, project_tests, strip_output, d):
-        self.validate(d)
+
+    @staticmethod
+    def from_cfg(tc_cfg, project_cfg, args):
+        tc = json.loads(json.dumps(tc_cfg), object_hook=TestCase)
+        tc.args = args  # need verbose, project
+        tc.project_cfg = project_cfg  # need strip_output
+        return tc
+
+
+    def __init__(self, tc_cfg):
+        self.output = 'stdout' # default
+
+        self.__dict__.update(tc_cfg)
+        self.args = None
+        self.project_cfg = None
         self.cmd_line = []
-        for i in d['input']:
-            if '$project_tests' in i:
-                param = i.replace('$project_tests', project_tests)
-            elif '$project' in i:
-                param = i.replace('$project', cfg.project)
-            elif '$digital' in i:
-                param = i.replace('$digital', cfg.digital)
-            else:
-                param = i
-            self.cmd_line.append(param)
-        self.expected = d.get('expected', None)
-        self.name = d.get('name', None)
-        self.output = d.get('output', 'stdout')
-        self.rubric = d.get('rubric', None)
-        self.strip_output = strip_output
-        self.verbose = cfg.verbose
-        self.verbose2 = cfg.verbose2
+        self.validate(tc_cfg)
 
 
     def validate(self, d):
@@ -39,6 +37,19 @@ class TestCase:
             fatal(f'Input for test \"{test_name}\" must be a list')
         if type(d.get('expected')) is not str:
             fatal(f'Expected output for test \"{test_name}\" must be a string')
+
+
+    def init_cmd_line(self, digital_path, project_tests_path):
+        for i in self.input:
+            if '$project_tests' in i:
+                param = i.replace('$project_tests', project_tests_path)
+            elif '$project' in i:
+                param = i.replace('$project', self.args.project)
+            elif '$digital' in i:
+                param = i.replace('$digital', digital_path)
+            else:
+                param = i
+            self.cmd_line.append(param)
 
 
     def get_actual(self, local):
@@ -54,8 +65,8 @@ class TestCase:
             print_red(str(err), '\n')
             return ''
 
-        if self.strip_output:
-            act = act.replace(self.strip_output, '')
+        if self.project_cfg.get('strip_output'):
+            act = act.replace(self.project_cfg['strip_output'], '')
         return act
 
     def prepare_cmd_line(self, cmd_line):
@@ -80,12 +91,12 @@ class TestCase:
         cmd_line = self.prepare_cmd_line(self.cmd_line)
         cmd_line_str = ' '.join(cmd_line)
 
-        if self.verbose2:
+        if self.args.very_verbose:
             print(f"===[{self.name}]===expected\n$ {cmd_line_str}\n{exp}")
             print()
             print(f"===[{self.name}]===actual\n$ {cmd_line_str}\n{act}")
             print()
-        if self.verbose and (act != exp):
+        if self.args.verbose and (act != exp):
             print(f"===[{self.name}]===diff\n$ {cmd_line_str}")
             diff = difflib.context_diff(exp, act, fromfile='expected', tofile='actual')
             for line in diff:
@@ -99,34 +110,56 @@ class TestCase:
 
 
 class Test:
+    default_cfg = {
+        'tests_path': '~/tests',
+        'digital_path': '~/Digital/Digital.jar'
+    }
+
+    @staticmethod
+    def from_cfg(test_cfg, args):
+        # Create a Test object from the test_cfg dict
+        test = json.loads(json.dumps(test_cfg.__dict__), object_hook=Test)
+        test.args = args
+        test.load_test_cases()
+        return test
+
+
     def __init__(self, cfg):
-        self.cfg = cfg
-        self.build_plan = 'make'
-        self.strip_output = None
-        self.test_cases = self.load_test_cases()
+        self.__dict__.update(cfg)
+        self.tests_path = os.path.expanduser(self.tests_path)
+        self.digital_path = os.path.expanduser(self.digital_path)
+        self.args = None
+        self.project_cfg = {
+            'build_plan': 'make',
+            'strip_output': None,
+        }
+        self.test_cases = []
+
 
     def load_test_cases(self):
         # Load <project>.toml
-        tests_file = os.path.join(self.cfg.tests_path, self.cfg.project, self.cfg.project + '.toml', )
+        tests_file = os.path.join(
+            self.tests_path,
+            self.args.project,
+            self.args.project + '.toml'
+        )
         with open(tests_file) as f:
             toml_input = toml.load(f)
 
         # Load the [project] table which contains project-specific config
-        d = toml_input.get('project', {})
-        if d:
-            self.build_plan = d.get('build_plan', self.build_plan)
-            self.strip_output = d.get('strip_output')
+        project_cfg = toml_input.get('project', {})
+        self.project_cfg.update(project_cfg)
 
         # Create test cases for each element of the [tests] table
-        test_cases = []
-        project_tests = os.path.join(self.cfg.tests_path, self.cfg.project)
-        for tc in toml_input['tests']:
-            test_cases.append(TestCase(self.cfg, project_tests, self.strip_output, tc))
-        return test_cases
+        project_tests_path = os.path.join(self.tests_path, self.args.project)
+        for tc_cfg in toml_input['tests']:
+            tc = TestCase.from_cfg(tc_cfg, project_cfg, self.args)
+            tc.init_cmd_line(self.digital_path, project_tests_path)
+            self.test_cases.append(tc)
 
 
     def build(self, repo_path):
-        if self.build_plan == 'make':
+        if self.project_cfg['build_plan'] == 'make':
             try:
                 cmd_exec_rc(['make', '-C', repo_path])
             except Exception as e:
@@ -156,9 +189,9 @@ class Test:
 
     def run_test_cases(self, repo_path):
         results = []
-        if self.cfg.test_name is not None:
+        if self.args.test_name is not None:
             for tc in self.test_cases:
-                if tc.name == self.cfg.test_name:
+                if tc.name == self.args.test_name:
                     results.append(self.run_one_test(repo_path, tc))
         else:
             for tc in self.test_cases:
