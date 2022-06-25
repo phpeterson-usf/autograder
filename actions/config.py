@@ -7,19 +7,8 @@ import tomlkit
 from actions.test import Test
 from actions.canvas import Canvas, CanvasMapper
 from actions.git import Git
-# from actions.importer import Importer
-
-# TODO factor this out
-
-config_root = pathlib.Path.home() / '.config' / 'grade'
-
-def config_path():
-    config_path =  config_root / 'config.toml'
-    return config_path
-
-def config_temp_path():
-    temp_path = config_root / 'temp.toml'
-    return temp_path
+from actions.importer import Importer
+from actions.util import load_toml, config_path
 
 
 def make_commented_table(d):
@@ -75,7 +64,7 @@ class Config:
         'students': [],
     }
     
-    path = pathlib.Path.home() / '.config' / 'grade' / 'config.toml'
+    path = config_path()
 
     def __init__(self, d):
         self.__dict__.update(d)
@@ -84,7 +73,7 @@ class Config:
     # Every time initialization
     @staticmethod
     def from_file():
-        actions = ['Test', 'Config', 'Git', 'Canvas', 'CanvasMapper']  # TODO add importer back
+        actions = ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Importer', 'Test']
 
         # Initialize with default cfg for each action module
         d = {}
@@ -92,10 +81,9 @@ class Config:
             d[act] = eval(f'{act}.default_cfg')
 
         # Any config in the TOML file overrides defaults
-        with open(Config.path) as f:
-            toml_cfg = tomlkit.parse(f.read())
-            for act in actions:
-                d[act].update(toml_cfg[act])
+        doc = load_toml(Config.path)
+        for act in actions:
+            d[act].update(doc[act])
 
         # Create the Config object
         return json.loads(json.dumps(d), object_hook=Config)
@@ -118,7 +106,7 @@ class Config:
         actions = ['Test']  # Empty config for students
         if for_instructor:
             # Add empty config for instructors
-            actions += ['Config', 'Git', 'Canvas', 'CanvasMapper']  # TODO add Importer back
+            actions += ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Importer']
 
         if not Config.path.exists():
             # config.toml not found

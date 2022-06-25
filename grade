@@ -11,13 +11,13 @@ from actions.canvas import Canvas, CanvasMapper
 from actions.config import Args, Config
 from actions.git import Git
 from actions.test import Test
-
+from actions.importer import Importer
 
 class Repo:
     def __init__(self, project, **kwargs):
         self.student = kwargs.get('student')
         if self.student:
-            pg = make_local_path(project, self.student)
+            pg = make_repo_path(project, self.student)
             self.local = os.path.join('.', pg)
         else:
             self.local = kwargs.get('local')
@@ -47,7 +47,7 @@ def upload_class(cfg, args):
 def main():
     args = Args.from_cmdline()
 
-    # Run the actions which don't require a list of repos
+    # Run the one-off actions which don't require a list of repos
     if args.action == 'config':
         Config.write_empty_config(args.instructor)
         return 0
@@ -56,6 +56,11 @@ def main():
     if args.action == 'upload':
         upload_class(cfg, args)
         return 0
+
+    if args.action == 'import':
+        imp = Importer.from_cfg(cfg.Importer)
+        imp.import_students()
+        return 0;
 
     tester = Test.from_cfg(cfg.Test, args)
     git = Git.from_cfg(cfg.Git, args)

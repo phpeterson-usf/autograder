@@ -1,11 +1,8 @@
 import json
 import os
-from pprint import PrettyPrinter
-import string
-import subprocess
 
-from actions.cmd import *
-from actions.util import *
+from actions.cmd import cmd_exec_capture, cmd_exec_rc
+from actions.util import failed, format_pass_fail, load_toml, print_green, print_red
 
 
 # One test case out of the list in the TOML test case file
@@ -53,17 +50,13 @@ class TestCase:
 
 
     def get_actual(self, local):
-        try:
-            if self.output == 'stdout':
-                # get actual output from stdout
-                act = cmd_exec_capture(self.cmd_line, local)
-            else:
-                # ignore stdout and get actual output from the specified file
-                path = os.path.join(local, self.output)
-                act = cmd_exec_capture(self.cmd_line, local, path)
-        except (FileNotFoundError, subprocess.TimeoutExpired) as err:
-            print_red(str(err), '\n')
-            return ''
+        if self.output == 'stdout':
+            # get actual output from stdout
+            act = cmd_exec_capture(self.cmd_line, local)
+        else:
+            # ignore stdout and get actual output from the specified file
+            path = os.path.join(local, self.output)
+            act = cmd_exec_capture(self.cmd_line, local, path)
 
         if self.project_cfg.get('strip_output'):
             act = act.replace(self.project_cfg['strip_output'], '')
@@ -103,9 +96,6 @@ class TestCase:
                 print(line, end='')
             print()
 
-        # TODO obsolete?
-        # if self.ioprint:
-            # print(f"$ {cmd_line_str}\n{actual}")
         return act == exp
 
 
@@ -138,21 +128,20 @@ class Test:
 
     def load_test_cases(self):
         # Load <project>.toml
-        tests_file = os.path.join(
+        path = os.path.join(
             self.tests_path,
             self.args.project,
             self.args.project + '.toml'
         )
-        with open(tests_file) as f:
-            toml_input = toml.load(f)
+        toml_doc = load_toml(path)
 
         # Load the [project] table which contains project-specific config
-        project_cfg = toml_input.get('project', {})
+        project_cfg = toml_doc.get('project', {})
         self.project_cfg.update(project_cfg)
 
         # Create test cases for each element of the [tests] table
         project_tests_path = os.path.join(self.tests_path, self.args.project)
-        for tc_cfg in toml_input['tests']:
+        for tc_cfg in toml_doc['tests']:
             tc = TestCase.from_cfg(tc_cfg, project_cfg, self.args)
             tc.init_cmd_line(self.digital_path, project_tests_path)
             self.test_cases.append(tc)

@@ -1,8 +1,9 @@
+import pathlib
 import sys
-import toml
+import tomlkit
 
 def fatal(s):
-    print_red(s, e='\n')
+    print_red(s, '\n')
     sys.exit(-1)
 
 
@@ -32,13 +33,24 @@ def format_pass_fail(tc_result):
     return tc_result['test'] + '+ '
 
 
-def load_toml(fname):
-    with open(fname) as f:
-        try:
-            return toml.load(f)
-        except Exception as e:
-            fatal(f'{fname}: {e}')
+def load_toml(path):
+    try:
+        with open(path) as f:
+            data = f.read()
+            return tomlkit.parse(data)
+    except Exception as e:
+        fatal(f'{path}: {e}')
 
 
-def make_local_path(project, student):
+def make_repo_path(project, student):
     return f'{project}-{student}'
+
+config_root = pathlib.Path.home() / '.config' / 'grade'
+
+def config_path():
+    config_path =  config_root / 'config.toml'
+    return config_path
+
+def config_temp_path():
+    temp_path = config_root / 'temp.toml'
+    return temp_path
