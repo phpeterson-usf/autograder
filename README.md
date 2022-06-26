@@ -5,6 +5,7 @@
 1. Run all student repos against instructor-provided input files
 1. Score actual output vs. expected using an instructor-provided rubric.
 1. Integration with the [Digital](https://github.com/hneemann/Digital) circuit simulation tool
+1. Automated upload of results to [Canvas](https://www.instructure.com/)
 
 ## Requirements
 1. Requires python3 and pip3. Python 3.7.3 is pre-installed on Raspberry Pi OS.
@@ -22,11 +23,11 @@
     $ cd ~
     $ git clone git@github.com:/phpeterson-usf/autograder.git
     ```
-1. Edit `~/.bashrc` or `~/.zshrc` on macOS to include the path to autograder
+1. Edit `~/.bashrc` (on Linux or Git Bash on Windows) or `~/.zshrc` (on macOS) to include the path to `grade`
     ```
     export PATH=~/autograder:$PATH
     ```
-1. Use the `source` command on that file to update your shell variables
+1. Use the `source` command on that file to update your environment 
     ```
     $ source ~/.zshrc
     ```
@@ -44,20 +45,20 @@
     [Test]
     tests_path = "~/myclass/tests"
     ```
-
+---
 ## Usage for Students
 1. You can test a project in the current directory like this
     ```
     $ cd ~/project02-phpeterson-usf
     $ grade test --project project02
     ```
-
+---
 ## Usage for Instructors
 1. Set up an empty config file
     ```
     $ grade config --instructor
     ```
-1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
+1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml` (see auto-importing students below)
     ```
     [Git]
     org = "cs315-21s"
@@ -129,17 +130,19 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     output = "04.txt"
     input = ["./$project", "-o", "04.txt"]
     ```
-    If `output` is not given, Autograder defaults to `stdout`
+    If `output` is not given, `grade` defaults to `stdout`
+
 ## Command Line Parameters
 1. `grade` supports these command-line parameters
 * `-d/--date` is the date to use for grade clone
 * `-e/--exec` provide commands to execute (e.g. `git pull; make clean`)
-* `-n/--name` runs one named test case, rather than all of them
+* `-i/--instructor` with `grade config` creates a full config file
+* `-n/--name` with `grade test` runs one named test case, rather than all of them
 * `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
 * `-v/--verbose` shows expected and actual for failing test cases
 * `-vv/--very-verbose` shows expected and actual for all test cases
 
-1. The command-line format is `argparse`-style, with no "=". These two commands are equivalent:
+    The command-line format is `argparse`-style, with no "=". These two commands are equivalent:
     ```
     $ cd ~/project02-jsmith
     $ grade test -p project02
@@ -147,6 +150,10 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     ```
 
 ## Importing the list of students
+1. You'll need `requests` to interact with web servers
+    ```
+    $ pip3 install requests
+    ```
 1. If you have the list of student GitHub usernames in a Google Sheet, you can import them into `~/.config/grade/config.toml` automatically
 1. To set that up, add this information to config.toml:
     ```
@@ -158,9 +165,17 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 1. Now you can `$ grade import` to update the list of `students` in the `[Config]` section of config.toml
 
 ## Using Canvas
-1. After you run `grade class -p lab01` the test results will be stored in a JSON file
-2. You can subsequently run `grade upload -p lab01` to upload the results to Canvas
-3. In order to upload, you must add these attributes to the `[Canvas]` section in `~/.config/grade/config.toml`
+1. You'll need `requests` to interact with web servers
+    ```
+    $ pip3 install requests
+    ```
+1. After you run `grade class -p lab01` the test results will be stored in a JSON file, e.g. `./lab01.json`
+1. You can subsequently run `grade upload -p lab01` to upload the results to [Canvas](https://canvas.instructure.com/doc/api/index.html)
+1. The JSON file contains the aggregate score for the repo (e.g. 80 out of 100 pts) and a comment showing which tests passed and failed. The comment will also be uploaded.
+1. The name you use for the `project` in `grade` must match the name of the assignment in Canvas, case-sensitively. 
+1. Since the Canvas REST API for submissions does not know about assignment groups, I recommend you create the assignment in Canvas before running `grade upload`. Otherwise Canvas will create a new assignment outside your structure for assignment groups
+1. `grade upload` manipulates only the named Canvas assignment. It does not mimic the uploading of CSV files shown in the Canvas web UI.
+1. In order to upload, you must add these attributes to the `[Canvas]` section in `~/.config/grade/config.toml`
     ```
     [Canvas]
     host_name = "canvas.instructure.com"  # your institution may have a test instance of Canvas
@@ -170,7 +185,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     github_col_name = "GitHub"  # Name of the CSV column which contains the GitHub username
     login_col_name = "SIS Login ID"  # Name of the CSV column which contains the Canvas SIS Login ID
     ```
-4. If Canvas isn't working for you, try the `-v` command-line flag, which will print the results of the Canvas REST API
+4. If Canvas isn't working for you, try the `-v` command-line flag, which will print the results of each Canvas REST API
 
 ## Using Digital
 1. [Digital](https://github.com/hneemann/Digital) has test case components which can test a circuit using pre-defined inputs and outputs. See Digital's documentation for scripted testing examples.
@@ -190,7 +205,8 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     """
     rubric = 1
     ```
-1. `grade` assumes that the path to the Digital JAR file is `~/Digital/Digital.jar`. If you need a different setting, you can change it in `~/.config/grade/config.toml`:
+1. `grade` assumes that the path to the Digital JAR file is `~/Digital/Digital.jar`. If you need a different setting, you can change it in the `[Test]` section of `~/.config/grade/config.toml`:
     ```
+    [Test]
     digital_path = "~/myclass/Digital/Digital.jar"
     ```
