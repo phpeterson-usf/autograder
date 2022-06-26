@@ -1,8 +1,10 @@
+import difflib
 import json
 import os
+import pprint
 
 from actions.cmd import cmd_exec_capture, cmd_exec_rc
-from actions.util import failed, format_pass_fail, load_toml, print_green, print_red
+from actions.util import failed, fatal, format_pass_fail, load_toml, print_green, print_red
 
 
 # One test case out of the list in the TOML test case file
@@ -120,7 +122,7 @@ class Test:
         self.digital_path = os.path.expanduser(self.digital_path)
         self.args = None
         self.project_cfg = {
-            'build_plan': 'make',
+            'build': 'make',
             'strip_output': None,
         }
         self.test_cases = []
@@ -148,13 +150,16 @@ class Test:
 
 
     def build(self, repo_path):
-        if self.project_cfg['build_plan'] == 'make':
+        b = self.project_cfg['build']
+        if b == 'none':
+            return
+        if b == 'make':
             try:
                 cmd_exec_rc(['make', '-C', repo_path])
             except Exception as e:
                 print_red(str(e), '\n')
         else:
-            fatal(f'Unknown build plan: \"{self.build_plan}\"')
+            fatal(f'Unknown build plan: \"{b}\"')
 
 
     def run_one_test(self, repo_path, test_case):
