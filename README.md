@@ -38,7 +38,7 @@
     $ git clone git@github.com:/USF-CS631-S21/tests.git
     ``` 
 1. By default, `grade` assumes that you authenticate to Github using `ssh` and test cases are in `~/tests`. If you need different settings, you can edit the config file: `~/.config/grade/config.toml`:
-    ```
+    ```toml
     [Git]
     credentials = "https"
 
@@ -98,7 +98,6 @@
 1. Test cases for each project are expressed in TOML 
 1. Test case inputs are a list of strings for each command-line flag and value. The keyword `$project` will be substituted for the name of your project. 
     ```toml
-    $ cat project02.toml
     [[tests]]
     name = "01"
     input = ["./$project", "-e", "1 + 1"]
