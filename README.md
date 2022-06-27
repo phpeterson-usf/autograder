@@ -97,7 +97,7 @@
 1. Instructors must create their own repo for the test cases for the class projects. Students will clone and pull this repo. We create this repo in the Github Classroom Organization, but that's up to you.
 1. Test cases for each project are expressed in TOML 
 1. Test case inputs are a list of strings for each command-line flag and value. The keyword `$project` will be substituted for the name of your project. 
-    ```
+    ```toml
     $ cat project02.toml
     [[tests]]
     name = "01"
@@ -112,19 +112,19 @@
     rubric = 5
     ```
 1. Note that this usage of `$project` is flexible enough for projects which are run using an interpreter like Java or Python
-    ```
+    ```toml
     [[tests]]
     input = ["python3", "$project.py"]
     ```
 1. Test cases can have input files in your `tests` repo using the keyword `$project_tests`, which will be 
 substituted for `$testspath/$project/`. In this example, substitution gives the input file as `$testspath/project02/testinput.txt`
-    ```
+    ```toml
     [[tests]]
     name = "03"
     input = ["./$project", "$project_tests/testinput.txt"]
     ```
 1. Test case output can be recorded from `stdout` or from a file. In this example, the contents of the file `04.txt` will be compared to the `expected` field of the test case. 
-    ```
+    ```toml
     [[tests]]
     name = "04"
     output = "04.txt"
@@ -156,7 +156,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     ```
 1. If you have the list of student GitHub usernames in a Google Sheet, you can import them into `~/.config/grade/config.toml` automatically
 1. To set that up, add this information to config.toml:
-    ```
+    ```toml
     [Importer]
     doc_id = "the long unique ID in the Google Sheet URL"
     sheet_name = "Sheet 1"  # the name of the spreadsheet tab
@@ -176,7 +176,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 1. Since the Canvas REST API for submissions does not know about assignment groups, I recommend you create the assignment in Canvas before running `grade upload`. Otherwise Canvas will create a new assignment outside your structure for assignment groups
 1. `grade upload` manipulates only the named Canvas assignment. It does not mimic the uploading of CSV files shown in the Canvas web UI.
 1. In order to upload, you must add these attributes to the `[Canvas]` section in `~/.config/grade/config.toml`
-    ```
+    ```toml
     [Canvas]
     host_name = "canvas.instructure.com"  # your institution may have a test instance of Canvas
     access_token = "xxx"  # create an access token in Profile | Settings in Canvas
@@ -190,7 +190,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 ## Using Digital
 1. [Digital](https://github.com/hneemann/Digital) has test case components which can test a circuit using pre-defined inputs and outputs. See Digital's documentation for scripted testing examples.
 1. `grade` leverages its ability to loop over the student repos, calling Java on the command line to use Digital's test case components. Example test case:
-    ```
+    ```toml
     [project]
     build = "none"
     strip_output = """
@@ -206,7 +206,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     rubric = 1
     ```
 1. `grade` assumes that the path to the Digital JAR file is `~/Digital/Digital.jar`. If you need a different setting, you can change it in the `[Test]` section of `~/.config/grade/config.toml`:
-    ```
+    ```toml
     [Test]
     digital_path = "~/myclass/Digital/Digital.jar"
     ```
