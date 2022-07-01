@@ -11,7 +11,6 @@ from actions.canvas import Canvas, CanvasMapper
 from actions.config import Args, Config
 from actions.git import Git
 from actions.test import Test
-from actions.importer import Importer
 
 class Repo:
     def __init__(self, project, **kwargs):
@@ -57,11 +56,6 @@ def main():
         upload_class(cfg, args)
         return 0
 
-    if args.action == 'import':
-        imp = Importer.from_cfg(cfg.Importer)
-        imp.import_students()
-        return 0;
-
     tester = Test.from_cfg(cfg.Test, args)
     git = Git.from_cfg(cfg.Git, args)
 
@@ -70,14 +64,18 @@ def main():
     if args.action == 'test':
         repo = Repo(args.project, local='.')
         repos.append(repo)
-    elif cfg.Config.students:
+    else:
+        students = cfg.Config.students  # old way
+        if not students:
+            mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
+            students = mapper.get_github_list()  # new way
+            if not students:
+                fatal("Must either 'test' one repo or give a list of students")
+
         # Make repo list from student list
-        for s in cfg.Config.students:
+        for s in students:
             repo = Repo(args.project, student=s)
             repos.append(repo)
-    else:
-        print("Must either 'test' one repo, or give a list of students to 'clone', 'pull', or 'class'")
-        return -1
 
     # Calc column width for justified printing
     longest = 0

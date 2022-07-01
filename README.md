@@ -58,7 +58,7 @@
     ```
     $ grade config --instructor
     ```
-1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml` (see auto-importing students below)
+1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
     ```
     [Git]
     org = "cs315-21s"
@@ -148,29 +148,23 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     $ grade test --project project02
     ```
 
-## Importing the list of students
-1. You'll need `requests` to interact with web servers
+## Using Canvas (instructors only)
+1. You'll need `requests` to interact with the Canvas web site
     ```
     $ pip3 install requests
     ```
-1. If you have the list of student GitHub usernames in a Google Sheet, you can import them into `~/.config/grade/config.toml` automatically
-1. To set that up, add this information to config.toml:
+1. In order to map GitHub usernames to Canvas login IDs, you need to provide a mapping file. 
+We ask students to fill out a Google Form which produces a Google Sheets spreadsheet. If you
+download that spreadsheet to a local CSV file, you can give the mapping configuration in `~/.config/grade/config.toml`
     ```toml
-    [Importer]
-    doc_id = "the long unique ID in the Google Sheet URL"
-    sheet_name = "Sheet 1"  # the name of the spreadsheet tab
-    github_col_name = "GitHub"  # the name of the spreadsheet column which contains the GitHub username
-    ```
-1. Now you can `$ grade import` to update the list of `students` in the `[Config]` section of config.toml
-
-## Using Canvas
-1. You'll need `requests` to interact with web servers
-    ```
-    $ pip3 install requests
+    [CanvasMapper]
+    map_path = "~/github-to-canvas.csv"  # CSV file which maps GitHub username to Canvas SIS Login ID
+    github_col_name = "GitHub"  # Name of the CSV column which contains the GitHub username
+    login_col_name = "SIS Login ID"  # Name of the CSV column which contains the Canvas SIS Login ID
     ```
 1. After you run `grade class -p lab01` the test results will be stored in a JSON file, e.g. `./lab01.json`
 1. You can subsequently run `grade upload -p lab01` to upload the results to [Canvas](https://canvas.instructure.com/doc/api/index.html)
-1. The JSON file contains the aggregate score for the repo (e.g. 80 out of 100 pts) and a comment showing which tests passed and failed. The comment will also be uploaded.
+1. The JSON file contains the aggregate score for the repo (e.g. 80 out of 100 pts) and a submission comment showing which tests passed and failed. The comment will also be uploaded.
 1. The name you use for the `project` in `grade` must match the name of the assignment in Canvas, case-sensitively. 
 1. Since the Canvas REST API for submissions does not know about assignment groups, I recommend you create the assignment in Canvas before running `grade upload`. Otherwise Canvas will create a new assignment outside your structure for assignment groups
 1. `grade upload` manipulates only the named Canvas assignment. It does not mimic the uploading of CSV files shown in the Canvas web UI.
@@ -180,9 +174,6 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     host_name = "canvas.instructure.com"  # your institution may have a test instance of Canvas
     access_token = "xxx"  # create an access token in Profile | Settings in Canvas
     course_name = "Your long course name"  # e.g. 'Computer Architecture - 01 (Spring 2022)'
-    map_path = "~/github-to-canvas.csv"  # CSV file which maps GitHub username to Canvas SIS Login ID
-    github_col_name = "GitHub"  # Name of the CSV column which contains the GitHub username
-    login_col_name = "SIS Login ID"  # Name of the CSV column which contains the Canvas SIS Login ID
     ```
 4. If Canvas isn't working for you, try the `-v` command-line flag, which will print the results of each Canvas REST API
 

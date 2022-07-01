@@ -7,7 +7,6 @@ import tomlkit
 from actions.test import Test
 from actions.canvas import Canvas, CanvasMapper
 from actions.git import Git
-from actions.importer import Importer
 from actions.util import load_toml, config_path
 
 
@@ -36,7 +35,7 @@ class Args:
     def from_cmdline():
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=[
-            'class', 'clone', 'config', 'exec', 'import', 'pull', 'test', 'upload'
+            'class', 'clone', 'config', 'exec', 'pull', 'test', 'upload'
         ])
         p.add_argument('-d', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
             default=None)
@@ -73,7 +72,7 @@ class Config:
     # Every time initialization
     @staticmethod
     def from_file():
-        actions = ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Importer', 'Test']
+        actions = ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Test']
 
         # Initialize with default cfg for each action module
         d = {}
@@ -106,7 +105,7 @@ class Config:
         actions = ['Test']  # Empty config for students
         if for_instructor:
             # Add empty config for instructors
-            actions += ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Importer']
+            actions += ['Canvas', 'CanvasMapper', 'Config', 'Git']
 
         if not Config.path.exists():
             # config.toml not found

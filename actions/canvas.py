@@ -52,6 +52,13 @@ class CanvasMapper:
         return ''
 
 
+    def get_github_list(self):
+        github_list = []
+        for github in self.mapping:
+            github_list.append(github)
+        return github_list
+
+
 # Handles GET and PUT of scores to Canvas
 class Canvas:
 
