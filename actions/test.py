@@ -31,7 +31,7 @@ class TestCase:
     def validate(self, d):
         test_name = d.get('name', 'unknown')
         if type(d.get('rubric')) is not int:
-            fatal('Rubric for test \"{test_name}\" must be an integer')
+            fatal(f'Rubric for test \"{test_name}\" must be an integer')
         if type(d.get('input')) is not list:
             fatal(f'Input for test \"{test_name}\" must be a list')
         if type(d.get('expected')) is not str:

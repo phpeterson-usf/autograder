@@ -1,13 +1,13 @@
 import argparse
 import json
-import pathlib
+from pathlib import Path
 import pprint
 import tomlkit
 
 from actions.test import Test
 from actions.canvas import Canvas, CanvasMapper
 from actions.git import Git
-from actions.util import load_toml, config_path
+from actions.util import load_toml, config_path, config_root
 
 
 def make_commented_table(d):
@@ -82,7 +82,8 @@ class Config:
         # Any config in the TOML file overrides defaults
         doc = load_toml(Config.path)
         for act in actions:
-            d[act].update(doc[act])
+            if doc.get(act):
+                d[act].update(doc[act])
 
         # Create the Config object
         return json.loads(json.dumps(d), object_hook=Config)
@@ -109,6 +110,7 @@ class Config:
 
         if not Config.path.exists():
             # config.toml not found
+            Path.mkdir(config_root, parents=True)
             Config.write_empty_actions(Config.path, actions)
         else:
             # Non-destructive
