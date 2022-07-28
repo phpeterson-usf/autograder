@@ -8,27 +8,28 @@
 1. Automated upload of results to [Canvas](https://www.instructure.com/)
 
 ## Requirements
-1. Requires python3 and pip3. Python 3.7.3 is pre-installed on Raspberry Pi OS.
-    ```
+1. Requires python3 and pip3
+    ```sh
     $ sudo apt install python3-pip
-    ```
-1. Requires [TOML](https://toml.io/en/) python module
-    ```
-    $ pip3 install tomlkit
     ```
 
 ## Installation
 1. Clone the `autograder` repo
-    ```
+    ```sh
     $ cd ~
     $ git clone git@github.com:/phpeterson-usf/autograder.git
+    $ cd autograder
     ```
-1. Edit `~/.bashrc` (on Linux or Git Bash on Windows) or `~/.zshrc` (on macOS) to include the path to `grade`
+1. Install python modules (mainly `tomlkit` and `requests`)
+    ```sh
+    $ pip3 install -r requirements.txt
+    ```
+1. Edit `~/.bash_profile` (on Linux or Git Bash on Windows) or `~/.zshrc` (on macOS) to include the path to `grade`
     ```
     export PATH=~/autograder:$PATH
     ```
 1. Use the `source` command on that file to update your environment 
-    ```
+    ```sh
     $ source ~/.zshrc
     ```
 1. Clone your class's tests repo. Use the right one for your class - these are just examples.
@@ -37,16 +38,20 @@
     $ git clone git@github.com:/cs315-21s/tests.git
     $ git clone git@github.com:/USF-CS631-S21/tests.git
     ``` 
+---
+## Usage for Students
+1. Write an empty config file
+    ```sh
+    $ grade config
+    ```
 1. By default, `grade` assumes that you authenticate to Github using `ssh` and test cases are in `~/tests`. If you need different settings, you can edit the config file: `~/.config/grade/config.toml`:
     ```toml
     [Git]
-    credentials = "https"
+    credentials = "https"  # default is"ssh"
 
     [Test]
-    tests_path = "~/myclass/tests"
+    tests_path = "~/myclass/tests"  # default is "~/tests"
     ```
----
-## Usage for Students
 1. You can test a project in the current directory like this
     ```
     $ cd ~/project02-phpeterson-usf
@@ -61,7 +66,7 @@
 1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
     ```
     [Git]
-    org = "cs315-21s"
+    org = "cs315-f22"
 
     [Config]
     students = [
@@ -149,10 +154,6 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     ```
 
 ## Using Canvas (instructors only)
-1. You'll need `requests` to interact with the Canvas web site
-    ```
-    $ pip3 install requests
-    ```
 1. In order to map GitHub usernames to Canvas login IDs, you need to provide a mapping file. 
 We ask students to fill out a Google Form which produces a Google Sheets spreadsheet. If you
 download that spreadsheet to a local CSV file, you can give the mapping configuration in `~/.config/grade/config.toml`
