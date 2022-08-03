@@ -7,24 +7,7 @@ import tomlkit
 from actions.test import Test
 from actions.canvas import Canvas, CanvasMapper
 from actions.git import Git
-from actions.util import load_toml, config_path, config_root
-
-
-def make_commented_table(d):
-    tbl = tomlkit.table()
-    for k,v in d.items():
-        if type(v) == str:
-            line = f'{k} = "{v}"'
-        elif type(v) == int:
-            line = f'{k} = {v}'
-        elif type(v) == list and not v:
-            line = f'{k} = []'
-        else:
-            # If we need booleans, handle python True vs TOML true
-            raise TypeError(f'Not handled: {type(v)}')
-        tbl.add(tomlkit.comment(line))
-
-    return tbl
+from actions.util import load_toml
 
 
 class Args:
@@ -35,14 +18,12 @@ class Args:
     def from_cmdline():
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=[
-            'class', 'clone', 'config', 'exec', 'pull', 'test', 'upload'
+            'class', 'clone', 'exec', 'pull', 'test', 'upload'
         ])
         p.add_argument('-d', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
             default=None)
         p.add_argument('-e', '--exec_cmd', help='Command to execute in each repo',
             default=None)
-        p.add_argument('-i', '--instructor', action='store_true', help='Write full config for instructors',
-            default=False)
         p.add_argument('-n', '--test-name', help='Run test case with this name',
             default=None)
         p.add_argument('-p', '--project', help='Project name',
@@ -62,17 +43,56 @@ class Config:
     default_cfg = {
         'students': [],
     }
-    
-    path = config_path()
+
+    dirname = Path.home() / '.config' / 'grade'
+    path = dirname / 'config.toml'
+
 
     def __init__(self, d):
         self.__dict__.update(d)
 
 
-    # Every time initialization
+    # Helper function for write_empty_actions() to minimize
+    # the amount of code in the eval() string
+    @staticmethod
+    def make_commented_table(d):
+        tbl = tomlkit.table()
+        for k,v in d.items():
+            if type(v) == str:
+                line = f'{k} = "{v}"'
+            elif type(v) == int:
+                line = f'{k} = {v}'
+            elif type(v) == list and not v:
+                line = f'{k} = []'
+            else:
+                # If we need booleans, handle python True vs TOML true
+                raise TypeError(f'Not handled: {type(v)}')
+            tbl.add(tomlkit.comment(line))
+
+        return tbl
+
+
+    # Make a commented-out tomlkit config for given actions using eval()
+    # to iterate over the list of actions with default configuration
+    @staticmethod
+    def write_empty_actions(path, actions):
+        doc = tomlkit.document()
+        for act in actions:
+            doc[act] = eval(f'Config.make_commented_table({act}.default_cfg)')
+        toml_data = tomlkit.dumps(doc)
+        with open(path, 'w') as f:
+            f.write(toml_data)
+
+
+    # Read the config file, creating it if needed
     @staticmethod
     def from_file():
         actions = ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Test']
+
+        # Create config.toml silently
+        if not Config.path.exists():
+            Path.mkdir(Config.dirname, parents=True)
+            Config.write_empty_actions(Config.path, actions)
 
         # Initialize with default cfg for each action module
         d = {}
@@ -87,31 +107,3 @@ class Config:
 
         # Create the Config object
         return json.loads(json.dumps(d), object_hook=Config)
-
-
-    # Make a commented-out tomlkit config for given actions
-    @staticmethod
-    def write_empty_actions(path, actions):
-        doc = tomlkit.document()
-        for act in actions:
-            doc[act] = eval(f'make_commented_table({act}.default_cfg)')
-        toml_data = tomlkit.dumps(doc)
-        with open(path, 'w') as f:
-            f.write(toml_data)
-
-
-    # One-time config in response to "grade config"
-    @staticmethod
-    def write_empty_config(for_instructor):
-        actions = ['Test']  # Empty config for students
-        if for_instructor:
-            # Add empty config for instructors
-            actions += ['Canvas', 'CanvasMapper', 'Config', 'Git']
-
-        if not Config.path.exists():
-            # config.toml not found
-            Path.mkdir(config_root, parents=True)
-            Config.write_empty_actions(Config.path, actions)
-        else:
-            # Non-destructive
-            print('File already exists: ', Config.path)

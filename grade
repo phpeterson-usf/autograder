@@ -44,14 +44,9 @@ def upload_class(cfg, args):
 
 
 def main():
+    cfg = Config.from_file()
     args = Args.from_cmdline()
 
-    # Run the one-off actions which don't require a list of repos
-    if args.action == 'config':
-        Config.write_empty_config(args.instructor)
-        return 0
-
-    cfg = Config.from_file()
     if args.action == 'upload':
         upload_class(cfg, args)
         return 0
@@ -70,7 +65,7 @@ def main():
             mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
             students = mapper.get_github_list()  # new way
             if not students:
-                fatal("Must either 'test' one repo or give a list of students")
+                fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
 
         # Make repo list from student list
         for s in students:

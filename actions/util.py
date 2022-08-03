@@ -1,4 +1,3 @@
-import pathlib
 import sys
 import tomlkit
 
@@ -44,13 +43,3 @@ def load_toml(path):
 
 def make_repo_path(project, student):
     return f'{project}-{student}'
-
-config_root = pathlib.Path.home() / '.config' / 'grade'
-
-def config_path():
-    config_path =  config_root / 'config.toml'
-    return config_path
-
-def config_temp_path():
-    temp_path = config_root / 'temp.toml'
-    return temp_path

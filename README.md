@@ -40,10 +40,6 @@
     ``` 
 ---
 ## Usage for Students
-1. Write an empty config file
-    ```sh
-    $ grade config
-    ```
 1. By default, `grade` assumes that you authenticate to Github using `ssh` and test cases are in `~/tests`. If you need different settings, you can edit the config file: `~/.config/grade/config.toml`:
     ```toml
     [Git]
@@ -59,10 +55,6 @@
     ```
 ---
 ## Usage for Instructors
-1. Set up an empty config file
-    ```
-    $ grade config --instructor
-    ```
 1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
     ```
     [Git]
@@ -140,7 +132,6 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 1. `grade` supports these command-line parameters
 * `-d/--date` is the date to use for grade clone
 * `-e/--exec` provide commands to execute (e.g. `git pull; make clean`)
-* `-i/--instructor` with `grade config` creates a full config file
 * `-n/--name` with `grade test` runs one named test case, rather than all of them
 * `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
 * `-v/--verbose` shows expected and actual for failing test cases
