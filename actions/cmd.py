@@ -2,8 +2,8 @@ import subprocess
 from actions.util import print_red
 
 
-def cmd_exec(args, wd=None, shell=False):
-    return subprocess.run(args, timeout=5, check=True, cwd=wd, capture_output=True, shell=shell)
+def cmd_exec(args, wd=None, shell=False, check=True):
+    return subprocess.run(args, timeout=5, check=check, cwd=wd, capture_output=True, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
@@ -13,7 +13,7 @@ def cmd_exec_rc(args, wd=None):
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False):
     try:
-        proc = cmd_exec(args, wd, shell)
+        proc = cmd_exec(args, wd, shell, check=False)
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
         print_red(str(e), '\n')
         return ''
