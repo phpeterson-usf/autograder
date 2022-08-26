@@ -19,7 +19,8 @@ class TestCase:
 
 
     def __init__(self, tc_cfg):
-        self.output = 'stdout' # default
+        self.output = 'stdout'       # default
+        self.case_sensitive = False  # default
 
         self.__dict__.update(tc_cfg)
         self.args = None
@@ -74,14 +75,16 @@ class TestCase:
 
     def make_lines(self, text):
         text_lines = []
+        if not self.case_sensitive:
+            text = text.lower()
         for line in text.split('\n'):
             text_lines.append(line.strip() + '\n')
         return text_lines
         
     def match_expected(self, actual):
         # rstrip to remove extra trailing newline
-        exp = self.make_lines(self.expected.rstrip().lower())
-        act = self.make_lines(actual.rstrip().lower())
+        exp = self.make_lines(self.expected.rstrip())
+        act = self.make_lines(actual.rstrip())
 
         cmd_line = self.prepare_cmd_line(self.cmd_line)
         cmd_line_str = ' '.join(cmd_line)
