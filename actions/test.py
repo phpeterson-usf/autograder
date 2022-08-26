@@ -80,8 +80,8 @@ class TestCase:
         
     def match_expected(self, actual):
         # rstrip to remove extra trailing newline
-        exp = self.make_lines(self.expected.rstrip())
-        act = self.make_lines(actual.rstrip())
+        exp = self.make_lines(self.expected.rstrip().lower())
+        act = self.make_lines(actual.rstrip().lower())
 
         cmd_line = self.prepare_cmd_line(self.cmd_line)
         cmd_line_str = ' '.join(cmd_line)
