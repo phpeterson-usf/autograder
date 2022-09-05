@@ -3,7 +3,7 @@ from actions.util import print_red
 
 
 def cmd_exec(args, wd=None, shell=False, check=True):
-    return subprocess.run(args, timeout=5, check=check, cwd=wd, capture_output=True, shell=shell)
+    return subprocess.run(args, timeout=15, check=check, cwd=wd, capture_output=True, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
