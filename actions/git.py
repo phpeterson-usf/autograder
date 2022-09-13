@@ -2,7 +2,7 @@ import json
 import os
 from actions.cmd import cmd_exec_capture, cmd_exec_rc
 from actions.util import fatal, make_repo_path
-
+import subprocess
 
 class Git:
     default_cfg = {
