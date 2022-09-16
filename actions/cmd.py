@@ -20,9 +20,8 @@ def cmd_exec_capture(args, wd=None, path=None, shell=False):
 
     if (path):
         # capture output written to path
-        f = open(path, 'r')
-        output = f.read()
-        f.close()
+        with open(path, 'r') as f:
+            return f.read()
     else:
         try:
             # capture output written to stdout
