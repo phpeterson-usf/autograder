@@ -247,14 +247,18 @@ class Test:
         # Sort class results by score, high to low
         class_results.sort(key=lambda x: self.total_score(x['results']), reverse=True)
         freqs = {}  # key: score, value: frequency
+        histo_students = []  # TODO remove this when counts get fixed
         for r in class_results:
             # Get score for one repo
             score = self.total_score(r['results'])
             if not score in freqs:
                 freqs[score] = 0
             freqs[score] += 1
+            histo_students.append(r['student'])
 
         print("\nScore frequency")
         for score, freq in freqs.items():
             pct = "{:.1f}".format(freq / len(class_results) * 100)
             print(f"{score}/{avail}: {freq}  ({pct}%)")
+
+        print(f'Students counted in histogram: {str(histo_students)}')
