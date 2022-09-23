@@ -261,4 +261,4 @@ class Test:
             pct = "{:.1f}".format(freq / len(class_results) * 100)
             print(f"{score}/{avail}: {freq}  ({pct}%)")
 
-        print(f'Students counted in histogram: {str(histo_students)}')
+        print(f'{len(histo_students)} students counted in histogram: {str(histo_students)}')
