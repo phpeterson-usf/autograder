@@ -91,7 +91,7 @@ class Config:
 
         # Create config.toml silently
         if not Config.path.exists():
-            Path.mkdir(Config.dirname, parents=True)
+            Path.mkdir(Config.dirname, parents=True, exist_ok=True)
             Config.write_empty_actions(Config.path, actions)
 
         # Initialize with default cfg for each action module
@@ -101,6 +101,9 @@ class Config:
 
         # Any config in the TOML file overrides defaults
         doc = load_toml(Config.path)
+        if not doc:
+            # This shouldn't happen since we just created the file
+            fatal(f'failed to load {Config.path}')
         for act in actions:
             if doc.get(act):
                 d[act].update(doc[act])

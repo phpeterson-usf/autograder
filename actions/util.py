@@ -38,7 +38,7 @@ def load_toml(path):
             data = f.read()
             return tomlkit.parse(data)
     except Exception as e:
-        fatal(f'{path}: {e}')
+        return {}
 
 
 def make_repo_path(project, student):

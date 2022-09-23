@@ -39,9 +39,21 @@ class CanvasMapper:
 
         abs_path = Path(self.map_path).expanduser()
         with open(abs_path) as f:
+            failures = []
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
-                self.mapping[row[self.github_col_name]] = row[self.login_col_name]
+                github = row[self.github_col_name]
+                login = row[self.login_col_name]
+                if not github:
+                    # accumulate students with empty GitHub username
+                    failures.append(login) 
+
+                # set up mapping from login ID to GitHub username
+                self.mapping[github] = login
+            if failures:
+                # print out students with empty github username
+                # so they can be fixed as a batch
+                fatal(f'No github IDs for logins: {str(failures)}')
         verbose(self.mapping)
 
 
