@@ -72,6 +72,10 @@
     ./project02-phpeterson-usf
     ./project02-gdbenson
     ```
+1. `grade clone` can take a student GitHub username, or several of them
+    ```
+    $ grade clone -p project02 -s phpeterson-usf -s gdbenson
+    ```
 1. `grade clone` can accept a date, or date and time, for your project deadline
     ```
     $ grade clone -p project02 --date '2021-10-14'

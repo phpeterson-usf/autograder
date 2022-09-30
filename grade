@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.9
 
 import json
 import os
@@ -42,6 +42,16 @@ def upload_class(cfg, args):
         canvas.add_score(login_id, result['score'], result['comment'])
     canvas.upload()
 
+def make_student_list(cfg, args):
+    students = args.students  # from command line
+    if not students:          # from config.toml
+        students = cfg.Config.students
+    if not students:          # from CSV file
+        mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
+        students = mapper.get_github_list()
+        if not students:
+            fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
+    return students
 
 def main():
     cfg = Config.from_file()
@@ -60,15 +70,8 @@ def main():
         repo = Repo(args.project, local='.')
         repos.append(repo)
     else:
-        students = cfg.Config.students  # old way
-        if not students:
-            mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
-            students = mapper.get_github_list()  # new way
-            if not students:
-                fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
-
         # Make repo list from student list
-        for s in students:
+        for s in make_student_list(cfg, args):
             repo = Repo(args.project, student=s)
             repos.append(repo)
 

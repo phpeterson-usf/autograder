@@ -28,6 +28,8 @@ class Args:
             default=None)
         p.add_argument('-p', '--project', help='Project name',
             default=None)
+        p.add_argument('-s', '--students', help='List of GitHub usernames', nargs='+',
+            default=None)
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output when they don\'t match',
             default=False)
         p.add_argument('-vv', '--very-verbose', action='store_true', help='Print actual and expected output whether they match or not',
