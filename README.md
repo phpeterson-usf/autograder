@@ -74,7 +74,7 @@
     ```
 1. `grade clone` can take a student GitHub username, or several of them
     ```
-    $ grade clone -p project02 -s phpeterson-usf -s gdbenson
+    $ grade clone -p project02 -s phpeterson-usf gdbenson
     ```
 1. `grade clone` can accept a date, or date and time, for your project deadline
     ```
