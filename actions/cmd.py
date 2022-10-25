@@ -13,11 +13,11 @@ def cmd_exec_rc(args, wd=None):
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False):
     try:
-        proc = cmd_exec(args, wd, shell, check=False)
+        proc = cmd_exec(args, wd, shell, check=True)
     except (
-        subprocess.CalledProcessError, 
+        subprocess.CalledProcessError,
         subprocess.TimeoutExpired,
-        FileNotFoundError, 
+        FileNotFoundError,
         PermissionError
     ) as e:
         print_red(str(e), '\n')
