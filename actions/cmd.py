@@ -29,9 +29,9 @@ def cmd_exec_capture(args, wd=None, path=None, shell=False):
             return f.read()
     else:
         try:
-            # capture output written to stdout
-            output = proc.stdout.decode('utf-8')
-            return output.rstrip('\n')
+            # capture output written to stdout or stderr
+            output = proc.stdout if proc.stdout else proc.stderr
+            return output.decode('utf-8').rstrip('\n')
         except UnicodeDecodeError as e:
             print('Output contains non-printable characters')
             return ''
