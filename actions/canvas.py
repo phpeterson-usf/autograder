@@ -176,7 +176,7 @@ class Canvas:
     # Get the ID for the named assignment, e.g. 'lab01'
     def get_assignment_id(self, course_id, assignment_name):
         assignment_id = None
-        path = f'api/v1/courses/{course_id}/assignments'
+        path = f'api/v1/courses/{course_id}/assignments?per_page=50'
         url = self.make_url(path)
 
         assignments = self.get_url(url)
