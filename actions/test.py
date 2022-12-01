@@ -140,7 +140,8 @@ class Test:
         )
         toml_doc = load_toml(path)
         if not toml_doc:
-            fatal(f'Failed to load {path}. Suggest "git pull" in tests repo')
+            print(f'Failed to load {path}. Suggest "git pull" in tests repo')
+            return
 
         # Load the [project] table which contains project-specific config
         project_cfg = toml_doc.get('project', {})
