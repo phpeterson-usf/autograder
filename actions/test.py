@@ -1,7 +1,10 @@
 import difflib
+import difflib
 import json
 import os
 import pprint
+from subprocess import CalledProcessError, TimeoutExpired
+import traceback
 
 from actions.cmd import cmd_exec_capture, cmd_exec_rc
 from actions.util import failed, fatal, format_pass_fail, load_toml, print_green, print_red
@@ -60,7 +63,7 @@ class TestCase:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.output)
             act = cmd_exec_capture(self.cmd_line, local, path)
-
+    
         if self.project_cfg.get('strip_output'):
             act = act.replace(self.project_cfg['strip_output'], '')
         return act
@@ -140,7 +143,7 @@ class Test:
         )
         toml_doc = load_toml(path)
         if not toml_doc:
-            print(f'Failed to load {path}. Suggest "git pull" in tests repo')
+            print_red(f'Failed to load {path}. Suggest "git pull" in tests repo')
             return
 
         # Load the [project] table which contains project-specific config
@@ -162,27 +165,63 @@ class Test:
         if b == 'make':
             try:
                 cmd_exec_rc(['make', '-C', repo_path])
-            except Exception as e:
-                print_red(str(e), '\n')
+            except CalledProcessError:
+                if self.args.verbose:
+                    print_red('Failed to build', '\n')
+                    print_red(traceback.format_exc(), '\n')
         else:
             fatal(f'Unknown build plan: \"{b}\"')
 
 
     def run_one_test(self, repo_path, test_case):
+        '''
+        Manage exceptions here so we can
+        1. print them out in a friendly way
+        2. record the failed test case
+        3. keep going to the next test cases and repos
+        '''
         score = 0
-        actual = test_case.get_actual(repo_path)
-        if test_case.match_expected(actual):
-            score = test_case.rubric
+        actual = ''
+        friendly_str = ''
+        tb_str = ''
+        try:
+            actual = test_case.get_actual(repo_path)
+            if test_case.match_expected(actual):
+                # Test case passed, accumulate score
+                score = test_case.rubric
+        except CalledProcessError:
+            friendly_str = 'Program crashed'
+            tb_str = traceback.format_exc()
+        except TimeoutExpired:
+            friendly_str = 'Infinite loop'
+            tb_str = traceback.format_exc()
+        except PermissionError:
+            friendly_str = 'Program is not executable'
+            tb_str = traceback.format_exc()
+        except FileNotFoundError:
+            friendly_str = 'File not found'
+            tb_str = traceback.format_exc()
+        except UnicodeDecodeError:
+            friendly_str = 'Output contains non-printable characters'
+            tb_str = traceback.format_exc()
 
         # Record score for later printing/uploading
         result = {'test': test_case.name, 'score': score}
 
         # Print as we go, for long running test cases
-        s = format_pass_fail(result)
+        result_str = format_pass_fail(result)
         if failed(result):
-            print_red(s)
+            print_red(result_str)
+
+            # Print exception and traceback, if any
+            if self.args.verbose:
+                if friendly_str:
+                    print_red(friendly_str, '\n')
+                if traceback:
+                    print_red(tb_str, '\n')
         else:
-            print_green(s)
+            # Print passed test case
+            print_green(result_str)
 
         return result
 

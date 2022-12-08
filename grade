@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import traceback
 
 from actions.cmd import *
 from actions.util import *
@@ -100,7 +101,7 @@ def main():
                 if args.action == 'class':
                     class_results.append(repo_results)
         except Exception as e:
-            print_red(repo.label + ' ' + str(e), '\n')
+            print_red(traceback.format_exc(), '\n');
             continue
 
     if args.action == 'class':
