@@ -6,7 +6,7 @@ import pprint
 from subprocess import CalledProcessError, TimeoutExpired
 import traceback
 
-from actions.cmd import cmd_exec_capture, cmd_exec_rc
+from actions.cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
 from actions.util import failed, fatal, format_pass_fail, load_toml, print_green, print_red
 
 
@@ -17,7 +17,7 @@ class TestCase:
     def from_cfg(tc_cfg, project_cfg, args):
         tc = json.loads(json.dumps(tc_cfg), object_hook=TestCase)
         tc.args = args  # need verbose, project
-        tc.project_cfg = project_cfg  # need strip_output
+        tc.project_cfg = project_cfg  # need strip_output and TIMEOUT
         return tc
 
 
@@ -62,7 +62,7 @@ class TestCase:
         else:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.output)
-            act = cmd_exec_capture(self.cmd_line, local, path)
+            act = cmd_exec_capture(self.cmd_line, local, path, self.project_config['timeout'])
     
         if self.project_cfg.get('strip_output'):
             act = act.replace(self.project_cfg['strip_output'], '')
@@ -127,9 +127,10 @@ class Test:
         self.tests_path = os.path.expanduser(self.tests_path)
         self.digital_path = os.path.expanduser(self.digital_path)
         self.args = None
-        self.project_cfg = {
+        self.project_cfg = {  # defaults
             'build': 'make',
             'strip_output': None,
+            'timeout': TIMEOUT
         }
         self.test_cases = []
 

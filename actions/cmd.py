@@ -1,7 +1,10 @@
 import subprocess
 
-def cmd_exec(args, wd=None, shell=False, check=True):
-    return subprocess.run(args, timeout=30, check=check, cwd=wd, capture_output=True, shell=shell)
+# default command timeout in seconds
+TIMEOUT = 5
+
+def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
+    return subprocess.run(args, timeout=timeout, check=check, cwd=wd, capture_output=True, shell=shell)
 
 
 def cmd_exec_rc(args, wd=None):
@@ -9,7 +12,7 @@ def cmd_exec_rc(args, wd=None):
     return proc.returncode
 
 
-def cmd_exec_capture(args, wd=None, path=None, shell=False):
+def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
     proc = cmd_exec(args, wd, shell, check=True)
     if (path):
         # capture output written to path
