@@ -27,9 +27,12 @@ def failed(tc_result):
 
 
 def format_pass_fail(tc_result):
+    name = tc_result['test']
+    rubric = tc_result['rubric']
+    base = f'{name}({rubric})'
     if failed(tc_result):
-        return tc_result['test'] + '- '
-    return tc_result['test'] + '+ '
+        return base + '- '
+    return base + '+ '
 
 
 def load_toml(path):

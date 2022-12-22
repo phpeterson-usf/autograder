@@ -206,7 +206,11 @@ class Test:
             tb_str = traceback.format_exc()
 
         # Record score for later printing/uploading
-        result = {'test': test_case.name, 'score': score}
+        result = {
+            'test': test_case.name, 
+            'score': score,
+            'rubric': test_case.rubric
+        }
 
         # Print as we go, for long running test cases
         result_str = format_pass_fail(result)
@@ -243,7 +247,15 @@ class Test:
         comment = ''
         for result in tc_results:
             comment += format_pass_fail(result)
+        comment += self.make_earned_avail(tc_results)
         return comment
+
+
+    # Build a string showing the points earned vs. available for this repo
+    def make_earned_avail(self, tc_results):
+        earned = self.total_score(tc_results)
+        avail = self.total_rubric()
+        return f"{earned}/{avail}"
 
 
     # Build and test one repo
@@ -259,9 +271,7 @@ class Test:
         }
 
         # Print net score for the repo
-        earned = self.total_score(tc_results)
-        avail = self.total_rubric()
-        print(f"{earned}/{avail}")
+        print(self.make_earned_avail(tc_results))
 
         return repo_result
 
