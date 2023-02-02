@@ -8,7 +8,7 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
 
 
 def cmd_exec_rc(args, wd=None):
-    proc = cmd_exec(args, wd)
+    proc = cmd_exec(args, wd, check=False)
     return proc.returncode
 
 

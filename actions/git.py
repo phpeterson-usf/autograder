@@ -1,7 +1,7 @@
 import json
 import os
 from actions.cmd import cmd_exec_capture, cmd_exec_rc
-from actions.util import fatal, make_repo_path
+from actions.util import fatal, make_repo_path, print_red
 import subprocess
 
 class Git:
@@ -77,7 +77,7 @@ class Git:
             return 0
         rc = cmd_exec_rc(['git', 'clone', remote, local])
         if rc != 0:
-            print('No repo: ' + remote)
+            print_red('No repo: ' + local, e='\n')
             return 0
         if self.args.date:
             branch = self.get_default_branch(local)
