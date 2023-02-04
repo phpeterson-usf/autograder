@@ -158,7 +158,7 @@ class Canvas:
     # Get the ID for the named course, e.g. "Computer Architecture - 01 (Spring 2022)"
     def get_course_id(self, course_name):
         course_id = None
-        path = 'api/v1/courses?per_page=50'
+        path = 'api/v1/courses?per_page=100'
         url = self.make_url(path)
 
         courses = self.get_url(url)
