@@ -60,7 +60,7 @@ class TestCase:
             timeout = self.project_cfg['timeout']
         else:
             timeout = TIMEOUT
-    
+
         if self.output == 'stdout':
             # get actual output from stdout
             act = cmd_exec_capture(self.cmd_line, local, timeout=timeout)
