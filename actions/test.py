@@ -1,5 +1,4 @@
 import difflib
-import difflib
 import json
 import os
 import pprint
@@ -133,7 +132,7 @@ class Test:
             'timeout': TIMEOUT
         }
         self.test_cases = []
-
+        self.build_err = ''
 
     def load_test_cases(self):
         # Load <project>.toml
@@ -160,19 +159,26 @@ class Test:
 
 
     def build(self, repo_path):
+        build_err = None
         b = self.project_cfg['build']
         if b == 'none':
             return
         if b == 'make':
-            try:
-                cmd_exec_rc(['make', '-C', repo_path])
-            except CalledProcessError:
-                if self.args.verbose:
-                    print_red('Failed to build', '\n')
-                    print_red(traceback.format_exc(), '\n')
+            if not os.path.exists(repo_path):
+                build_err = f'Repo not found: {repo_path}'
+            else:
+                mf_path = os.path.join(repo_path, 'Makefile')
+                if not os.path.isfile(mf_path):
+                    build_err = f'Makefile not found: {mf_path}'
+                else:
+                    if cmd_exec_rc(['make', '-C', repo_path]) != 0:
+                        build_err = 'Program did not make successfully'
         else:
             fatal(f'Unknown build plan: \"{b}\"')
 
+        if build_err and self.args.verbose:
+            print_red(build_err, '')
+        return build_err
 
     def run_one_test(self, repo_path, test_case):
         '''
@@ -186,7 +192,10 @@ class Test:
         friendly_str = ''
         tb_str = ''
         try:
-            actual = test_case.get_actual(repo_path)
+            if not self.build_err:
+                # Only run the program if it built. Otherwise, actual ''
+                # will be recorded as a test case failure. Useful for "grade class"
+                actual = test_case.get_actual(repo_path)
             if test_case.match_expected(actual):
                 # Test case passed, accumulate score
                 score = test_case.rubric
@@ -194,13 +203,13 @@ class Test:
             friendly_str = 'Program crashed'
             tb_str = traceback.format_exc()
         except TimeoutExpired:
-            friendly_str = 'Infinite loop'
+            friendly_str = 'Program timed out (infinite loop?)'
             tb_str = traceback.format_exc()
         except PermissionError:
             friendly_str = 'Program is not executable'
             tb_str = traceback.format_exc()
         except FileNotFoundError:
-            friendly_str = 'File not found'
+            friendly_str = 'Program not found (build failed?)'
             tb_str = traceback.format_exc()
         except UnicodeDecodeError:
             friendly_str = 'Output contains non-printable characters'
@@ -208,10 +217,14 @@ class Test:
 
         # Record score for later printing/uploading
         result = {
-            'test': test_case.name, 
-            'score': score,
-            'rubric': test_case.rubric
+            'rubric': test_case.rubric,
+            'score' : score,
+            'test'  : test_case.name,
         }
+        if (friendly_str):
+            # Only if there was a failure. That way finding "test_err" in
+            # <project>.json will only find real errors
+            result['test_err'] = f' {friendly_str}\n'
 
         # Print as we go, for long running test cases
         result_str = format_pass_fail(result)
@@ -222,8 +235,8 @@ class Test:
             if self.args.verbose:
                 if friendly_str:
                     print_red(friendly_str, '\n')
-                if traceback:
-                    print_red(tb_str, '\n')
+                # if traceback:
+                    # print_red(tb_str, '\n')
         else:
             # Print passed test case
             print_green(result_str)
@@ -246,8 +259,13 @@ class Test:
     # Build up the submission comment to send to Canvas
     def make_comment(self, tc_results):
         comment = ''
-        for result in tc_results:
-            comment += format_pass_fail(result)
+        if (self.build_err):
+            comment += f'{self.build_err} '
+        else:
+            for result in tc_results:
+                comment += format_pass_fail(result)
+                if result.get('test_err'):
+                    comment += f" {result['test_err']}"
         comment += self.make_earned_avail(tc_results)
         return comment
 
@@ -261,19 +279,32 @@ class Test:
 
     # Build and test one repo
     def test(self, student, repo_path):
-
-        self.build(repo_path)
-        tc_results = self.run_test_cases(repo_path)
+        tc_results = []
         repo_result = {
-            'student': student,
-            'results': tc_results,
-            'comment': self.make_comment(tc_results),      
-            'score': self.total_score(tc_results),
+            'comment'  : '',
+            'results'  : {},
+            'score'    : 0,
+            'student'  : student
         }
+
+        self.build_err = self.build(repo_path)
+        if self.build_err:
+            # Only if an error occurred. That way you can search
+            # the <project>.json file for 'build_err' and find only real errors
+            repo_result.update({
+                'build_err': self.build_err
+            })
+
+        # Run the test cases
+        tc_results = self.run_test_cases(repo_path)
+        repo_result.update({
+            'results': tc_results,
+            'score'  : self.total_score(tc_results),
+            'comment': self.make_comment(tc_results)
+        })
 
         # Print net score for the repo
         print(self.make_earned_avail(tc_results))
-
         return repo_result
 
 
