@@ -40,9 +40,10 @@ def load_toml(path):
         with open(path) as f:
             data = f.read()
             return tomlkit.parse(data)
+    except FileNotFoundError as fnf:
+        fatal(f'File not found: {path}. Suggest "git pull" in tests repo')
     except Exception as e:
-        return {}
-
+        fatal(f'Failed to parse {path}: ' + str(e))
 
 def make_repo_path(project, student):
     return f'{project}-{student}'

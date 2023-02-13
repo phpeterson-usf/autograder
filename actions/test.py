@@ -55,13 +55,18 @@ class TestCase:
 
 
     def get_actual(self, local):
+        if 'timeout' in self.project_cfg:
+            timeout = self.project_cfg['timeout']
+        else:
+            timeout = TIMEOUT
+
         if self.output == 'stdout':
             # get actual output from stdout
-            act = cmd_exec_capture(self.cmd_line, local)
+            act = cmd_exec_capture(self.cmd_line, local, timeout=timeout)
         else:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.output)
-            act = cmd_exec_capture(self.cmd_line, local, path, self.project_config['timeout'])
+            act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout)
     
         if self.project_cfg.get('strip_output'):
             act = act.replace(self.project_cfg['strip_output'], '')
@@ -142,9 +147,6 @@ class Test:
             self.args.project + '.toml'
         )
         toml_doc = load_toml(path)
-        if not toml_doc:
-            print_red(f'Failed to load {path}. Suggest "git pull" in tests repo')
-            return
 
         # Load the [project] table which contains project-specific config
         project_cfg = toml_doc.get('project', {})
