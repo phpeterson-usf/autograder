@@ -30,7 +30,16 @@ def format_pass_fail(tc_result):
     name = tc_result['test']
     rubric = tc_result['rubric']
     score = tc_result['score']
-    return f'{name}({score}/{rubric}) '
+
+    # Pad formatted string out to same length as full credit
+    # so that individual test cases and the total are column-aligned
+    max_len = len(f'{name}({rubric}/{rubric}) ')
+    this_fmt = f'{name}({score}/{rubric}) '
+    padding = max_len - len(this_fmt)
+    for i in range(padding):
+        this_fmt += ' '
+
+    return this_fmt
 
 
 def load_toml(path):
