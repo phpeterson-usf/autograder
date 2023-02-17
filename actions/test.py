@@ -169,9 +169,10 @@ class Test:
             if not os.path.exists(repo_path):
                 build_err = f'Repo not found: {repo_path}'
             else:
-                mf_path = os.path.join(repo_path, 'Makefile')
-                if not os.path.isfile(mf_path):
-                    build_err = f'Makefile not found: {mf_path}'
+                mfu_path = os.path.join(repo_path, 'Makefile')
+                mfl_path = os.path.join(repo_path, 'makefile')
+                if not os.path.isfile(mfu_path) and not os.path.isfile(mfl_path):
+                    build_err = f'Makefile not found: {mfu_path}'
                 else:
                     if cmd_exec_rc(['make', '-C', repo_path]) != 0:
                         build_err = 'Program did not make successfully'
@@ -234,7 +235,7 @@ class Test:
             if self.args.verbose:
                 if friendly_str:
                     print_red(friendly_str, '\n')
-                if traceback:
+                if tb_str:
                     last_line = tb_str.split('\n')[-2]
                     print_red(last_line, '\n')
         else:
