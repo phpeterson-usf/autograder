@@ -194,10 +194,7 @@ class Test:
         friendly_str = ''
         tb_str = ''
         try:
-            if not self.build_err:
-                # Only run the program if it built. Otherwise, actual ''
-                # will be recorded as a test case failure. Useful for "grade class"
-                actual = test_case.get_actual(repo_path)
+            actual = test_case.get_actual(repo_path)
             if test_case.match_expected(actual):
                 # Test case passed, accumulate score
                 score = test_case.rubric
@@ -237,8 +234,9 @@ class Test:
             if self.args.verbose:
                 if friendly_str:
                     print_red(friendly_str, '\n')
-                # if traceback:
-                    # print_red(tb_str, '\n')
+                if traceback:
+                    last_line = tb_str.split('\n')[-2]
+                    print_red(last_line, '\n')
         else:
             # Print passed test case
             print_green(result_str)
@@ -263,11 +261,10 @@ class Test:
         comment = ''
         if (self.build_err):
             comment += f'{self.build_err} '
-        else:
-            for result in tc_results:
-                comment += format_pass_fail(result)
-                if result.get('test_err'):
-                    comment += f" {result['test_err']}"
+        for result in tc_results:
+            comment += format_pass_fail(result)
+            if result.get('test_err'):
+                comment += f" {result['test_err']}"
         comment += self.make_earned_avail(tc_results)
         return comment
 
