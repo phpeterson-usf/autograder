@@ -163,6 +163,9 @@ class Canvas:
 
         courses = self.get_url(url)
         for c in courses:
+            if not 'name' in c:
+                continue
+
             if c['name'] == course_name:
                 course_id = c['id']
                 break
