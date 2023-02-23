@@ -81,6 +81,9 @@ class Git:
             return 0
         if self.args.date:
             branch = self.get_default_branch(local)
+            if not branch:
+                print_red('Empty repo (no branches): ' + local, e='\n')
+                return 0
             commit_hash = self.get_commit_hash(local, branch)
             if commit_hash:
                 cmd_exec_rc(['git', 'checkout', commit_hash], wd=local)
