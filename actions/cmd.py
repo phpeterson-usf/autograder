@@ -1,7 +1,7 @@
 import subprocess
 
 # default command timeout in seconds
-TIMEOUT = 20
+TIMEOUT = 5
 
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
     return subprocess.run(args, timeout=timeout, check=check, cwd=wd, capture_output=True, shell=shell)
