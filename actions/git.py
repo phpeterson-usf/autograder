@@ -29,7 +29,7 @@ class Git:
     def make_remote(self, student):
         repo_path = make_repo_path(self.args.project, student)
         if self.credentials == 'ssh':
-            return f'git@github.com:/{self.org}/{repo_path}'
+            return f'git@github.com:{self.org}/{repo_path}.git'
         elif self.credentials == 'https':
             return f'https://github.com/{self.org}/{repo_path}'
         else:

@@ -1,42 +1,87 @@
+import atexit
 import os
+import shutil
 import signal
 import subprocess
 import sys
+import time
 
 # default command timeout in seconds
 TIMEOUT = 20
 
+class ProcResults(object):
+    def __init__(self, returncode, stdout, stderr):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+global_cleanup_registered = False
+global_cleanup_gpid = None
+
+def cmd_cleanup():
+    global global_cleanup_registered
+    global global_cleanup_gpid
+    if global_cleanup_gpid:
+        #print(f'cmd_cleanup() killing process group {global_cleanup_gpid}', file=sys.stderr)
+        try:
+            os.killpg(global_cleanup_gpid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
     #return subprocess.run(args, capture_output=True, cwd=wd, shell=shell, check=check)
+    presults = ProcResults(0, None, None)
+
+    global global_cleanup_registered
+    global global_cleanup_gpid
+
+    if not global_cleanup_registered:
+        global_cleanup_registered = True    
+        atexit.register(cmd_cleanup)
+
     try:
-        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                              start_new_session=True, cwd=wd, shell=shell)
-        #p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-        #                     preexec_fn=os.setsid, cwd=wd, shell=shell)
-        p.stdout = None
-        p.stderr = None
-        p.stdout, p.stderr = p.communicate(timeout=timeout)
+
+        #parent_gpid = os.getpgid(os.getpid())
+        #print(f'cmd_exec() os.getpgid(os.getpid()) = {parent_gpid}', file=sys.stderr)
+
+        global_cleanup_gpid = os.getpgid(proc.pid)
+        
+        #print(f'cmd_exec() os.getpgid(proc.pid) = {global_cleanup_gpid}', file=sys.stderr)
+
+        presults.stdout, presults.stderr = proc.communicate(timeout=timeout)
+        presults.returncode = proc.returncode
+
     except subprocess.TimeoutExpired:
         print(f'cmd_exec() Timeout for {args} ({timeout}s) expired', file=sys.stderr)
         if os.name == 'posix':
-            print(f'cmd_exec() os.killpg()', file=sys.stderr)
-            #os.killpg(os.getpgid(p.pid), signal.SIGKILL)
-            os.killpg(os.getpgid(p.pid), signal.SIGTERM)
-    return p
+            #print(f'cmd_exec() os.killpg()', file=sys.stderr)
+            pgid = os.getpgid(proc.pid)
+            os.killpg(pgid, signal.SIGTERM)
+            time.sleep(5)
+            os.waitpid(-pgid, os.WNOHANG)
+    
+            
+    return presults
 
 def cmd_exec_rc(args, wd=None):
-    proc = cmd_exec(args, wd, check=False)
-    return proc.returncode
+    presults = cmd_exec(args, wd=wd, check=False)
+    return presults.returncode
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
-    proc = cmd_exec(args, wd, shell, check=True, timeout=timeout)
+    presults = cmd_exec(args, wd=wd, shell=shell, check=True, timeout=timeout)
     if (path):
         # capture output written to path
         with open(path, 'r') as f:
             return f.read()
     else:
         # capture output written to stdout or stderr
-        output = proc.stdout if proc.stdout else proc.stderr
+        output = presults.stdout if presults.stdout else presults.stderr
+
+        #print("cmd_exec_capture() stderr:")
+        #print(presults.stderr.decode('utf-8'))
+
         if output:
             return output.decode('utf-8').rstrip('\n')
         else:
