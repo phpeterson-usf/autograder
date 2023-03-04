@@ -18,9 +18,14 @@ class ProcResults(object):
 global_cleanup_registered = False
 global_cleanup_gpid = None
 
+# Handler to be called on process exit (e.g., CTRL-C)
 def cmd_cleanup():
     global global_cleanup_registered
     global global_cleanup_gpid
+
+    if os.name ! 'posix':
+        return
+
     if global_cleanup_gpid:
         #print(f'cmd_cleanup() killing process group {global_cleanup_gpid}', file=sys.stderr)
         try:
@@ -29,12 +34,12 @@ def cmd_cleanup():
             pass
 
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
-    #return subprocess.run(args, capture_output=True, cwd=wd, shell=shell, check=check)
     presults = ProcResults(0, None, None)
 
     global global_cleanup_registered
     global global_cleanup_gpid
 
+    # Only register cmd_cleanup() once 
     if not global_cleanup_registered:
         global_cleanup_registered = True    
         atexit.register(cmd_cleanup)
@@ -54,7 +59,7 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
         presults.returncode = proc.returncode
 
     except subprocess.TimeoutExpired:
-        print(f'cmd_exec() Timeout for {args} ({timeout}s) expired', file=sys.stderr)
+        #print(f'cmd_exec() Timeout for {args} ({timeout}s) expired', file=sys.stderr)
         if os.name == 'posix':
             #print(f'cmd_exec() os.killpg()', file=sys.stderr)
             pgid = os.getpgid(proc.pid)
