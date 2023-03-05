@@ -9,6 +9,7 @@ import time
 # default command timeout in seconds
 TIMEOUT = 20
 
+# Wrapper to return values from cmd_exec
 class ProcResults(object):
     def __init__(self, returncode, stdout, stderr):
         self.returncode = returncode
@@ -23,7 +24,8 @@ def cmd_cleanup():
     global global_cleanup_registered
     global global_cleanup_gpid
 
-    if os.name ! 'posix':
+    # Only kill process group on POSIX systems
+    if os.name != 'posix':
         return
 
     if global_cleanup_gpid:
@@ -32,6 +34,7 @@ def cmd_cleanup():
             os.killpg(global_cleanup_gpid, signal.SIGTERM)
         except ProcessLookupError:
             pass
+
 
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
     presults = ProcResults(0, None, None)
@@ -64,15 +67,18 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
             #print(f'cmd_exec() os.killpg()', file=sys.stderr)
             pgid = os.getpgid(proc.pid)
             os.killpg(pgid, signal.SIGTERM)
-            time.sleep(5)
+            # Delay to allow processes to exit
+            time.sleep(3)
+            # This can only wait for the parent of the process group
             os.waitpid(-pgid, os.WNOHANG)
-    
-            
+                
     return presults
+
 
 def cmd_exec_rc(args, wd=None):
     presults = cmd_exec(args, wd=wd, check=False)
     return presults.returncode
+
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
     presults = cmd_exec(args, wd=wd, shell=shell, check=True, timeout=timeout)
@@ -83,9 +89,6 @@ def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
     else:
         # capture output written to stdout or stderr
         output = presults.stdout if presults.stdout else presults.stderr
-
-        #print("cmd_exec_capture() stderr:")
-        #print(presults.stderr.decode('utf-8'))
 
         if output:
             return output.decode('utf-8').rstrip('\n')
