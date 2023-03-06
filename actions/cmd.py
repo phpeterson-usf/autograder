@@ -79,6 +79,7 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
             time.sleep(3)
             # This can only wait for the parent of the process group
             os.waitpid(-pgid, os.WNOHANG)
+        raise
                 
     return presults
 
@@ -98,7 +99,5 @@ def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
         # capture output written to stdout or stderr
         output = presults.stdout if presults.stdout else presults.stderr
 
-        if output:
+        if output is not None:
             return output.decode('utf-8').rstrip('\n')
-        else:
-            return "cmd timeout"
