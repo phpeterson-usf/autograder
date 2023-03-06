@@ -1,10 +1,13 @@
 import atexit
+import io
 import os
 import shutil
 import signal
 import subprocess
 import sys
 import time
+
+from actions.util import *
 
 # default command timeout in seconds
 TIMEOUT = 20
@@ -30,7 +33,6 @@ def cmd_cleanup():
         return
 
     if global_cleanup_gpid:
-        #print(f'cmd_cleanup() killing process group {global_cleanup_gpid}', file=sys.stderr)
         try:
             os.killpg(global_cleanup_gpid, signal.SIGTERM)
         except ProcessLookupError:
@@ -50,29 +52,29 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
         atexit.register(cmd_cleanup)
 
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                              start_new_session=True, cwd=wd, shell=shell)
-
-        #parent_gpid = os.getpgid(os.getpid())
-        #print(f'cmd_exec() os.getpgid(os.getpid()) = {parent_gpid}', file=sys.stderr)
 
         global_cleanup_gpid = os.getpgid(proc.pid)
         
-        #print(f'cmd_exec() os.getpgid(proc.pid) = {global_cleanup_gpid}', file=sys.stderr)
+        buf = io.StringIO()
+        total_bytes = 0;
 
-        while proc.poll() == None:
-            buf = proc.stdout.read()
-            print("buf = ", buf)
-            print("len(buf) = ", len(buf))
+        while (proc.poll() == None) & (total_bytes < output_limit):
+            cur_data = proc.stdout.read().decode('utf-8')
+            total_bytes += len(cur_data)
+            buf.write(cur_data)
 
-        #presults.stdout, presults.stderr = proc.communicate(timeout=timeout)
-
+        # Raise exception if output_limit exceeded        
+        if total_bytes > output_limit:
+            raise OutputLimitExceeded
+    
+        presults.stdout = buf
+        presults.stderr = None
         presults.returncode = proc.returncode
 
     except subprocess.TimeoutExpired:
-        #print(f'cmd_exec() Timeout for {args} ({timeout}s) expired', file=sys.stderr)
         if os.name == 'posix':
-            #print(f'cmd_exec() os.killpg()', file=sys.stderr)
             pgid = os.getpgid(proc.pid)
             os.killpg(pgid, signal.SIGTERM)
             # Delay to allow processes to exit
@@ -100,4 +102,5 @@ def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
         output = presults.stdout if presults.stdout else presults.stderr
 
         if output is not None:
-            return output.decode('utf-8').rstrip('\n')
+            #return output.decode('utf-8').rstrip('\n')
+            return output.getvalue().rstrip('\n')
