@@ -215,7 +215,7 @@ class Test:
             friendly_str = 'Output contains non-printable characters'
             tb_str = traceback.format_exc()
         except OutputLimitExceeded:
-            friendly_str = 'Program produced too much output'
+            friendly_str = 'Program produced too much output (infinit loop?)'
             tb_str = traceback.format_exc()
 
         # Record score for later printing/uploading
