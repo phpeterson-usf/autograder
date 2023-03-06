@@ -8,6 +8,7 @@ import time
 
 # default command timeout in seconds
 TIMEOUT = 20
+OUTPUT_LIMIT = 10000
 
 # Wrapper to return values from cmd_exec
 class ProcResults(object):
@@ -36,7 +37,8 @@ def cmd_cleanup():
             pass
 
 
-def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
+def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
+             output_limit=OUTPUT_LIMIT):
     presults = ProcResults(0, None, None)
 
     global global_cleanup_registered
@@ -58,7 +60,13 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT):
         
         #print(f'cmd_exec() os.getpgid(proc.pid) = {global_cleanup_gpid}', file=sys.stderr)
 
-        presults.stdout, presults.stderr = proc.communicate(timeout=timeout)
+        while proc.poll() == None:
+            buf = proc.stdout.read()
+            print("buf = ", buf)
+            print("len(buf) = ", len(buf))
+
+        #presults.stdout, presults.stderr = proc.communicate(timeout=timeout)
+
         presults.returncode = proc.returncode
 
     except subprocess.TimeoutExpired:
