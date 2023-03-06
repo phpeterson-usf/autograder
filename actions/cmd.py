@@ -7,10 +7,11 @@ import subprocess
 import sys
 import time
 
-from actions.util import *
+from actions.util import OutputLimitExceeded
 
 # default command timeout in seconds
 TIMEOUT = 20
+# default output limit in bytes
 OUTPUT_LIMIT = 10000
 
 # Wrapper to return values from cmd_exec
