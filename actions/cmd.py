@@ -64,10 +64,6 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
             cur_data = proc.stdout.read().decode('utf-8')
             total_bytes += len(cur_data)
             buf.write(cur_data)
-
-        # Raise exception if output_limit exceeded        
-        if total_bytes > output_limit:
-            raise OutputLimitExceeded
     
         presults.stdout = buf
         presults.stderr = None
@@ -82,6 +78,10 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
             # This can only wait for the parent of the process group
             os.waitpid(-pgid, os.WNOHANG)
         raise
+
+    # Raise exception if output_limit exceeded        
+    if total_bytes > output_limit:
+        raise OutputLimitExceeded
                 
     return presults
 
