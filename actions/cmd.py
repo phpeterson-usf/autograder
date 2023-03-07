@@ -76,8 +76,6 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 break
 
             cur_bytes = proc.stdout.read(READ_BUFFER_SIZE)
-
-            print(cur_bytes)
             
             # If no data available, delay for 1/2 second
             if cur_bytes is None:
@@ -85,12 +83,17 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 cur_data = '';
             else:
                 cur_data = cur_bytes.decode('utf-8')
-                print(cur_data)
             
             if cur_data != '':
                 total_bytes += len(cur_data)
                 buf.write(cur_data)
-    
+
+        # Grab remaing bytes off stdout, if any
+        cur_bytes = proc.stdout.read(READ_BUFFER_SIZE)            
+        if cur_bytes != None:
+            cur_data = cur_bytes.decode('utf-8')
+            buf.write(cur_data)
+
         presults.stdout = buf
         presults.stderr = None
         presults.returncode = proc.returncode
