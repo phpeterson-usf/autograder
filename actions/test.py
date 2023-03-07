@@ -7,7 +7,7 @@ import traceback
 
 from actions.cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
 from actions.util import failed, fatal, format_pass_fail, load_toml, print_green, print_red
-
+from actions.util import OutputLimitExceeded
 
 # One test case out of the list in the TOML test case file
 class TestCase:
@@ -213,6 +213,9 @@ class Test:
             tb_str = traceback.format_exc()
         except UnicodeDecodeError:
             friendly_str = 'Output contains non-printable characters'
+            tb_str = traceback.format_exc()
+        except OutputLimitExceeded:
+            friendly_str = 'Program produced too much output (infinit loop?)'
             tb_str = traceback.format_exc()
 
         # Record score for later printing/uploading

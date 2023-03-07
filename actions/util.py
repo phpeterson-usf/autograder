@@ -1,6 +1,9 @@
 import sys
 import tomlkit
 
+class OutputLimitExceeded(Exception):
+    pass
+
 def fatal(s):
     print_red(s, '\n')
     sys.exit(-1)
