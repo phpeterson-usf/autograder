@@ -75,7 +75,6 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 break
             
             cur_data = proc.stdout.read(READ_BUFFER_SIZE).decode('utf-8')
-            print(cur_data)
 
             total_bytes += len(cur_data)
             buf.write(cur_data)
