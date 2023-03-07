@@ -13,6 +13,9 @@ from actions.util import OutputLimitExceeded
 TIMEOUT = 20
 # default output limit in bytes
 OUTPUT_LIMIT = 10000
+# read buffer size
+READ_BUFFER_SIZE = 1024
+
 
 # Wrapper to return values from cmd_exec
 class ProcResults(object):
@@ -57,12 +60,23 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                              start_new_session=True, cwd=wd, shell=shell)
 
         global_cleanup_gpid = os.getpgid(proc.pid)
+
+        timer = time.time() + timeout
         
         buf = io.StringIO()
         total_bytes = 0;
 
-        while (proc.poll() == None) & (total_bytes < output_limit):
-            cur_data = proc.stdout.read().decode('utf-8')
+        while True:
+            if proc.poll() is not None:
+                break
+            if time.time() > timer:
+                raise subprocess.TimeoutExpired
+            if total_bytes > output_limit:
+                break
+            
+            cur_data = proc.stdout.read(READ_BUFFER_SIZE).decode('utf-8')
+            print(cur_data)
+
             total_bytes += len(cur_data)
             buf.write(cur_data)
     
