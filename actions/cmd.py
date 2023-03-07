@@ -59,8 +59,9 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                              start_new_session=True, cwd=wd, shell=shell)
 
+        os.set_blocking(proc.stdout.fileno(), False)
+        os.set_blocking(proc.stderr.fileno(), False)
         global_cleanup_gpid = os.getpgid(proc.pid)
-
         timer = time.time() + timeout
         
         buf = io.StringIO()
@@ -70,14 +71,22 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
             if proc.poll() is not None:
                 break
             if time.time() > timer:
-                raise subprocess.TimeoutExpired
+                raise subprocess.TimeoutExpired(args, timeout)
             if total_bytes > output_limit:
                 break
-            
-            cur_data = proc.stdout.read(READ_BUFFER_SIZE).decode('utf-8')
 
-            total_bytes += len(cur_data)
-            buf.write(cur_data)
+            cur_bytes = proc.stdout.read(READ_BUFFER_SIZE)
+            
+            # If no data available, delay for 1/2 second
+            if cur_bytes is None:
+                time.sleep(0.5)
+                cur_data = '';
+            else:
+                cur_data = cur_bytes.decode('utf-8')
+            
+            if cur_data != '':
+                total_bytes += len(cur_data)
+                buf.write(cur_data)
     
         presults.stdout = buf
         presults.stderr = None
