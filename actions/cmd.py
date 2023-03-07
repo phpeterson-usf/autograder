@@ -60,7 +60,7 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                              start_new_session=True, cwd=wd, shell=shell)
 
         os.set_blocking(proc.stdout.fileno(), False)
-        os.set_blocking(proc.stderr.fileno(), False)
+        #os.set_blocking(proc.stderr.fileno(), False)
         global_cleanup_gpid = os.getpgid(proc.pid)
         timer = time.time() + timeout
         
@@ -76,6 +76,8 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 break
 
             cur_bytes = proc.stdout.read(READ_BUFFER_SIZE)
+
+            print(cur_bytes)
             
             # If no data available, delay for 1/2 second
             if cur_bytes is None:
@@ -83,6 +85,7 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 cur_data = '';
             else:
                 cur_data = cur_bytes.decode('utf-8')
+                print(cur_data)
             
             if cur_data != '':
                 total_bytes += len(cur_data)
