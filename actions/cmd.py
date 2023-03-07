@@ -89,7 +89,7 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 buf.write(cur_data)
 
         # Grab remaing bytes off stdout, if any
-        cur_bytes = proc.stdout.read(READ_BUFFER_SIZE)            
+        cur_bytes = proc.stdout.read()
         if cur_bytes != None:
             cur_data = cur_bytes.decode('utf-8')
             buf.write(cur_data)
