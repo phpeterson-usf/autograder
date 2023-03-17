@@ -54,12 +54,21 @@ def make_student_list(cfg, args):
             fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
     return students
 
+# Supports autocompletion after -s, as called from complete.bash
+def make_student_completions(cfg, args):
+    mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
+    return '|'.join(mapper.get_student_names())
+
+
 def main():
     cfg = Config.from_file()
     args = Args.from_cmdline()
 
     if args.action == 'upload':
         upload_class(cfg, args)
+        return 0
+    elif args.action == 'complete':
+        print(make_student_completions(cfg, args))
         return 0
 
     tester = Test.from_cfg(cfg.Test, args)

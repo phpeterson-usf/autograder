@@ -23,6 +23,7 @@ class CanvasMapper:
 
     default_cfg = {
         'map_path': 'your CSV mapping file here',
+        'student_col_name': 'Student',
         'github_col_name': 'GitHub',
         'login_col_name': 'SIS Login ID',
     }
@@ -36,7 +37,8 @@ class CanvasMapper:
     def __init__(self, mapper_cfg):
         self.__dict__.update(mapper_cfg)
         self.mapping = {}
-
+        self.student_names = []
+    
         abs_path = Path(self.map_path).expanduser()
         with open(abs_path) as f:
             failures = []
@@ -50,6 +52,10 @@ class CanvasMapper:
 
                 # set up mapping from login ID to GitHub username
                 self.mapping[github] = login
+
+                # save the names for autocomplete. Refactor this?
+                self.student_names.append(row[self.student_col_name])
+
             if failures:
                 # print out students with empty github username
                 # so they can be fixed as a batch
@@ -70,6 +76,8 @@ class CanvasMapper:
             github_list.append(github)
         return github_list
 
+    def get_student_names(self):
+        return self.student_names
 
 # Handles GET and PUT of scores to Canvas
 class Canvas:
