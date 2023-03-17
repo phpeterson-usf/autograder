@@ -4,6 +4,13 @@ from actions.cmd import cmd_exec_capture, cmd_exec_rc
 from actions.util import fatal, make_repo_path, print_red
 import subprocess
 
+class GitNoCommits(Exception):
+    pass
+class GitNoBranches(Exception):
+    pass
+class GitNoRepo(Exception):
+    pass
+
 class Git:
     default_cfg = {
         'org': 'your GitHub Classroom org here',
@@ -48,7 +55,10 @@ class Git:
             stdout=subprocess.PIPE,
         )
         branch = cut.stdout.read().decode("utf-8").strip()
+        if not branch:
+            raise GitNoBranches
         return branch
+        
 
 
     def get_commit_hash(self, local, branch):
@@ -59,8 +69,7 @@ class Git:
             "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
         lines =  cmd_exec_capture(cmd, wd=local)
         if len(lines) == 0:
-            print(f'no commits before {deadline}', end='')
-            return None
+            raise GitNoCommits
         split_lines = lines.split("\n")
         commit_line = split_lines[0]
         date_line = split_lines[1]
@@ -75,18 +84,21 @@ class Git:
         if os.path.isdir(local):
             print('Already exists: ' + local)
             return 0
-        rc = cmd_exec_rc(['git', 'clone', remote, local])
-        if rc != 0:
-            print_red('No repo: ' + local, e='\n')
-            return 0
-        if self.args.date:
-            branch = self.get_default_branch(local)
-            if not branch:
-                print_red('Empty repo (no branches): ' + local, e='\n')
-                return 0
-            commit_hash = self.get_commit_hash(local, branch)
-            if commit_hash:
+        try:
+            rc = cmd_exec_rc(['git', 'clone', remote, local])
+            if rc != 0:
+                raise GitNoRepo
+            if self.args.date:
+                branch = self.get_default_branch(local)
+                commit_hash = self.get_commit_hash(local, branch)
                 cmd_exec_rc(['git', 'checkout', commit_hash], wd=local)
+        except GitNoRepo:
+            print_red('No remote repo')
+        except GitNoCommits:
+            print_red('No commits before deadline. Removing local repo')
+            cmd_exec_rc(['rm', '-rf', local])
+        except GitNoBranches:
+            print_red('No branches in repo')
         print()
 
 
