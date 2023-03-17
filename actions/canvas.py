@@ -23,7 +23,7 @@ class CanvasMapper:
 
     default_cfg = {
         'map_path': 'your CSV mapping file here',
-        'student_col_name': 'Student',
+        'name_col_name': 'Student',
         'github_col_name': 'GitHub',
         'login_col_name': 'SIS Login ID',
     }
@@ -36,8 +36,8 @@ class CanvasMapper:
 
     def __init__(self, mapper_cfg):
         self.__dict__.update(mapper_cfg)
-        self.mapping = {}
-        self.student_names = []
+        self.github_login_map = {}
+        self.name_github_map = {}
     
         abs_path = Path(self.map_path).expanduser()
         with open(abs_path) as f:
@@ -46,29 +46,36 @@ class CanvasMapper:
             for row in reader:
                 github = row[self.github_col_name]
                 login = row[self.login_col_name]
+                name = row[self.name_col_name]
                 if not github:
                     # accumulate students with empty GitHub username
                     failures.append(login) 
 
-                # set up mapping from login ID to GitHub username
-                self.mapping[github] = login
+                # set up mapping from Github username to login username
+                # this is used for upload to Canvas
+                self.github_login_map[github] = login
 
-                # save the names for autocomplete. Refactor this?
-                self.student_names.append(row[self.student_col_name])
+                # set up mapping from "Last, First" name to GitHub username
+                # this is used for shell tab completion after -s
+                self.name_github_map[name] = github
 
             if failures:
                 # print out students with empty github username
                 # so they can be fixed as a batch
                 fatal(f'No github IDs for logins: {str(failures)}')
-        verbose(self.mapping)
 
 
-    def lookup(self, github_name):
-        if github_name in self.mapping:
-            return self.mapping[github_name]
+    def lookup_login_id(self, github_name):
+        if github_name in self.github_login_map:
+            return self.github_login_map[github_name]
         print('no mapping for ' + github_name)
         return ''
 
+
+    def lookup_github(self, full_name):
+        if full_name in self.name_github_map:
+            return self.name_github_map[full_name]
+        return ''
 
     def get_github_list(self):
         github_list = []
@@ -76,8 +83,25 @@ class CanvasMapper:
             github_list.append(github)
         return github_list
 
+    # supports the "complete" action from complete.bash
     def get_student_names(self):
-        return self.student_names
+        names = list(self.name_github_map.keys())
+        return names
+
+    # supports lookup of 'Last, First' names from -s
+    def map_student_args(self, args):
+        students = []
+        for s in args.students:
+            s_github = self.lookup_github(s)
+            if (s_github):
+                # The command line arg was a "last, first" name
+                # get the github ID for that name
+                students.append(s_github)
+            else:
+                # The command line arg wasn't a "last, first" name
+                # just pass it through unmodified
+                students.append(s)
+        return students
 
 # Handles GET and PUT of scores to Canvas
 class Canvas:

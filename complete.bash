@@ -4,7 +4,7 @@ _grade_complete()
 {
   local cur prev
 
-  IFS=$COMP_STUDENTS_SEP
+  IFS="|"
   COMPREPLY=()
   cur=${COMP_WORDS[COMP_CWORD]}
   prev=${COMP_WORDS[COMP_CWORD-1]}
@@ -14,7 +14,7 @@ _grade_complete()
   elif [ $COMP_CWORD -ge 2 ]; then
     case "$prev" in
       "-s")
-        COMPREPLY=( $(compgen -W "$(grade complete)" -- $cur) )
+        COMPREPLY=( $(compgen -W "# $(grade complete)" -- $cur) )
         ;;
       "-p")
         COMPREPLY=( $(compgen -W "project01|project02" -- $cur) )

@@ -39,16 +39,17 @@ def upload_class(cfg, args):
     mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
     for result in class_results:
         # Map GitHub username to Canvas SIS Login ID using imported CSV file
-        login_id = mapper.lookup(result['student'])
+        login_id = mapper.lookup_login_id(result['student'])
         canvas.add_score(login_id, result['score'], result['comment'])
     canvas.upload()
 
 def make_student_list(cfg, args):
-    students = args.students  # from command line
-    if not students:          # from config.toml
+    # TODO: does this work if there's no CSV file?
+    mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
+    students = mapper.map_student_args(args)  # from command line
+    if not students:                          # from config.toml
         students = cfg.Config.students
-    if not students:          # from CSV file
-        mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
+    if not students:                          # from CSV file
         students = mapper.get_github_list()
         if not students:
             fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
@@ -57,13 +58,16 @@ def make_student_list(cfg, args):
 # Supports autocompletion after -s, as called from complete.bash
 def make_student_completions(cfg, args):
     mapper = CanvasMapper.from_cfg(cfg.CanvasMapper)
-    return '|'.join(mapper.get_student_names())
+    completions = '|'.join(mapper.get_student_names())
+    return completions
 
 
 def main():
     cfg = Config.from_file()
     args = Args.from_cmdline()
 
+    # These commands don't need to loop through repos
+    # Perhaps they should be separate scripts?
     if args.action == 'upload':
         upload_class(cfg, args)
         return 0
