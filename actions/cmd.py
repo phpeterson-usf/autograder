@@ -116,8 +116,8 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
     return presults
 
 
-def cmd_exec_rc(args, wd=None):
-    presults = cmd_exec(args, wd=wd, check=False)
+def cmd_exec_rc(args, wd=None, timeout=None):
+    presults = cmd_exec(args, wd=wd, check=False, timeout=timeout)
     return presults.returncode
 
 
