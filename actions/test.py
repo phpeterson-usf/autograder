@@ -174,7 +174,7 @@ class Test:
                 if not os.path.isfile(mfu_path) and not os.path.isfile(mfl_path):
                     build_err = f'Makefile not found: {mfu_path}'
                 else:
-                    if cmd_exec_rc(['make', '-C', repo_path]) != 0:
+                    if cmd_exec_rc(['make', '-C', repo_path], timeout=30) != 0:
                         build_err = 'Program did not make successfully'
         else:
             fatal(f'Unknown build plan: \"{b}\"')
