@@ -79,7 +79,7 @@ class CanvasMapper:
 
     def get_github_list(self):
         github_list = []
-        for github in self.mapping:
+        for github in self.github_login_map:
             github_list.append(github)
         return github_list
 
