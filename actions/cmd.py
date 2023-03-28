@@ -1,6 +1,7 @@
 import atexit
 import io
 import os
+import select
 import shutil
 import signal
 import subprocess
@@ -60,13 +61,15 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                              start_new_session=True, cwd=wd, shell=shell)
 
-        os.set_blocking(proc.stdout.fileno(), False)
+        #os.set_blocking(proc.stdout.fileno(), False)
         #os.set_blocking(proc.stderr.fileno(), False)
         global_cleanup_gpid = os.getpgid(proc.pid)
         timer = time.time() + timeout
         
         buf = io.StringIO()
         total_bytes = 0;
+
+        fd = proc.stdout.fileno()
 
         while True:
             if proc.poll() is not None:
@@ -76,14 +79,13 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
             if total_bytes > output_limit:
                 break
 
-            cur_bytes = proc.stdout.read(READ_BUFFER_SIZE)
-            
-            # If no data available, delay for 1/2 second
-            if cur_bytes is None:
-                time.sleep(0.5)
-                cur_data = '';
-            else:
+            selres = select.select([fd], [], [], 1.0)
+            if selres[0] and selres[0][0] == fd:
+                cur_len = len(proc.stdout.peek(READ_BUFFER_SIZE))
+                cur_bytes = proc.stdout.read(cur_len)
                 cur_data = cur_bytes.decode('utf-8')
+            else:
+                cur_data = ''
             
             if cur_data != '':
                 total_bytes += len(cur_data)
