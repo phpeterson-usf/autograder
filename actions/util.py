@@ -57,3 +57,12 @@ def load_toml(path):
 
 def make_repo_path(project, student):
     return f'{project}-{student}'
+
+def parse_project_name(cwd):
+    # if the current directory is named like a given project (project-username),
+    # use that as the project name
+    # eg. if cwd is '/path/to/project1-phpeterson', return 'project1'
+    # otherwise, use the current directory name
+    # eg. if cwd is '/path/to/project1', use 'project1'
+    i = cwd.name.find('-')
+    return cwd.name if i == -1 else cwd.name[:i]

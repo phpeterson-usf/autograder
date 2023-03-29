@@ -7,7 +7,7 @@ import tomlkit
 from actions.test import Test
 from actions.canvas import Canvas, CanvasMapper
 from actions.git import Git
-from actions.util import load_toml
+from actions.util import load_toml, parse_project_name
 
 
 class Args:
@@ -27,7 +27,7 @@ class Args:
         p.add_argument('-n', '--test-name', help='Run test case with this name',
             default=None)
         p.add_argument('-p', '--project', help='Project name',
-            default=None)
+            default=parse_project_name(Path.cwd()))
         p.add_argument('-s', '--students', help='List of GitHub usernames', nargs='+',
             default=None)
         p.add_argument('-v', '--verbose', action='store_true', help='Print actual and expected output when they don\'t match',

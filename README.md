@@ -51,8 +51,9 @@
 1. You can test a project in the current directory like this
     ```
     $ cd ~/project02-phpeterson-usf
-    $ grade test --project project02
+    $ grade test
     ```
+    note that `grade` will intuit the project to test based on your current directory.
 ---
 ## Usage for Instructors
 1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
