@@ -11,7 +11,7 @@ import time
 from actions.util import OutputLimitExceeded
 
 # default command timeout in seconds
-TIMEOUT = 30
+TIMEOUT = 60
 # default output limit in bytes
 OUTPUT_LIMIT = 10000
 # read buffer size
@@ -92,9 +92,12 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
                 buf.write(cur_data)
 
         # Grab remaing bytes off stdout, if any
-        cur_bytes = proc.stdout.read()
-        if cur_bytes != None:
+        selres = select.select([fd], [], [], 1.0)
+        if selres[0] and selres[0][0] == fd:
+            cur_len = len(proc.stdout.peek(READ_BUFFER_SIZE))
+            cur_bytes = proc.stdout.read(cur_len)
             cur_data = cur_bytes.decode('utf-8')
+            total_bytes += len(cur_data)
             buf.write(cur_data)
 
         presults.stdout = buf
