@@ -21,6 +21,8 @@ class Repo:
             self.local = os.path.join('.', pg)
         else:
             self.local = kwargs.get('local')
+        if kwargs.get('subdir'):
+            self.local = os.path.join(kwargs.get('subdir'))
         self.label = self.local.split('/')[-1]    
 
 
@@ -67,13 +69,14 @@ def main():
 
     # Build list of repos to run, either from '.' or list of students
     repos = []
+    subdir = tester.project_cfg['subdir']
     if args.action == 'test':
-        repo = Repo(args.project, local='.')
+        repo = Repo(args.project, local='.', subdir=subdir)
         repos.append(repo)
     else:
         # Make repo list from student list
         for s in make_student_list(cfg, args):
-            repo = Repo(args.project, student=s)
+            repo = Repo(args.project, student=s, subdir=subdir)
             repos.append(repo)
 
     # Calc column width for justified printing
