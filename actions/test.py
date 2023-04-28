@@ -134,6 +134,7 @@ class Test:
         self.project_cfg = {  # defaults
             'build': 'make',
             'strip_output': None,
+            'subdir': None,
             'timeout': TIMEOUT
         }
         self.test_cases = []
