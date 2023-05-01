@@ -22,7 +22,7 @@ class Repo:
         else:
             self.local = kwargs.get('local')
         if kwargs.get('subdir'):
-            self.local = os.path.join(kwargs.get('subdir'))
+            self.local = os.path.join(self.local, kwargs.get('subdir'))
         self.label = self.local.split('/')[-1]    
 
 
