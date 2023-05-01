@@ -23,6 +23,8 @@ class Repo:
             self.local = kwargs.get('local')
         if kwargs.get('subdir'):
             self.local = os.path.join(self.local, kwargs.get('subdir'))
+        if not os.path.isdir(self.local):
+            fatal(f'{self.local} does not exist. Perhaps subdir is wrong?')
         self.label = self.local.split('/')[-1]    
 
 
