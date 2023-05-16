@@ -28,12 +28,14 @@ class Git:
 
     def make_remote(self, student):
         repo_path = make_repo_path(self.args.project, student)
-        if self.cfg.credentials == 'ssh':
-            return f'git@github.com:{self.cfg.org}/{repo_path}.git'
-        elif self.credentials == 'https':
-            return f'https://github.com/{self.cfg.org}/{repo_path}'
+        cred = self.cfg['credentials']
+        org = self.cfg['org']
+        if cred == 'ssh':
+            return f'git@github.com:{org}/{repo_path}.git'
+        elif cred == 'https':
+            return f'https://github.com/{org}/{repo_path}'
         else:
-            fatal('unknown Git.credentials: ' + self.cfg.credentials)
+            fatal(f'unknown Git.credentials: {cred}')
 
 
     def get_default_branch(self, local):

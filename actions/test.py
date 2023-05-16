@@ -65,7 +65,7 @@ class TestCase:
             act = cmd_exec_capture(self.cmd_line, local, timeout=timeout)
         else:
             # ignore stdout and get actual output from the specified file
-            path = os.path.join(local, self.tc_cfg.output)
+            path = os.path.join(local, self.tc_cfg['output'])
             act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout)
     
         if self.project_cfg.get('strip_output'):
