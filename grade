@@ -50,9 +50,9 @@ def upload_class(cfg, args):
 def make_student_list(cfg, args):
     students = args.students  # from command line
     if not students:          # from config.toml
-        students = cfg.Config.students
+        students = cfg.cfg['Config']['students']
     if not students:          # from CSV file
-        mapper = CanvasMapper(cfg['CanvasMapper'])
+        mapper = CanvasMapper(cfg.cfg['CanvasMapper'])
         students = mapper.get_github_list()
         if not students:
             fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
