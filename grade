@@ -39,8 +39,8 @@ def upload_class(cfg, args):
     with open(path) as f:
         data = f.read()
         class_results = json.loads(data)
-    canvas = Canvas(cfg['Canvas'], args)
-    mapper = CanvasMapper(cfg['CanvasMapper'])
+    canvas = Canvas(cfg.cfg['Canvas'], args)
+    mapper = CanvasMapper(cfg.cfg['CanvasMapper'])
     for result in class_results:
         # Map GitHub username to Canvas SIS Login ID using imported CSV file
         login_id = mapper.lookup(result['student'])
