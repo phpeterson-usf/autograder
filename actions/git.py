@@ -17,16 +17,9 @@ class Git:
         'credentials': 'ssh',
     }
 
-    @staticmethod
-    def from_cfg(git_cfg, args):
-        git = json.loads(json.dumps(git_cfg.__dict__), object_hook=Git)
-        git.args = args
-        return git
-
-
-    def __init__(self, git_cfg):
-        self.__dict__.update(git_cfg)
-        self.args = None
+    def __init__(self, git_cfg, args):
+        self.cfg = git_cfg
+        self.args = args
 
 
     def make_local(self, student):
@@ -35,12 +28,12 @@ class Git:
 
     def make_remote(self, student):
         repo_path = make_repo_path(self.args.project, student)
-        if self.credentials == 'ssh':
-            return f'git@github.com:{self.org}/{repo_path}.git'
+        if self.cfg.credentials == 'ssh':
+            return f'git@github.com:{self.cfg.org}/{repo_path}.git'
         elif self.credentials == 'https':
-            return f'https://github.com/{self.org}/{repo_path}'
+            return f'https://github.com/{self.cfg.org}/{repo_path}'
         else:
-            fatal('unknown Git.credentials: ' + self.credentials)
+            fatal('unknown Git.credentials: ' + self.cfg.credentials)
 
 
     def get_default_branch(self, local):

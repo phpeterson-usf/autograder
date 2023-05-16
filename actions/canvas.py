@@ -28,22 +28,20 @@ class CanvasMapper:
     }
 
 
-    @staticmethod
-    def from_cfg(mapper_cfg):
-        return json.loads(json.dumps(mapper_cfg.__dict__), object_hook=CanvasMapper)
-
-
-    def __init__(self, mapper_cfg):
-        self.__dict__.update(mapper_cfg)
+    def __init__(self, map_cfg):
+        self.map_cfg = dict(CanvasMapper.default_cfg)
+        safe_update(self.map_cfg, map_cfg)
         self.mapping = {}
 
-        abs_path = Path(self.map_path).expanduser()
+        abs_path = Path(self.map_cfg['map_path']).expanduser()
         with open(abs_path) as f:
             failures = []
+            gh_col_name = self.map_cfg['github_col_name']
+            login_col_name = self.map_cfg['login_col_name']
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
-                github = row[self.github_col_name]
-                login = row[self.login_col_name]
+                github = row[gh_col_name]
+                login = row[login_col_name]
                 if not github:
                     # accumulate students with empty GitHub username
                     failures.append(login) 
@@ -80,31 +78,24 @@ class Canvas:
         'course_name': 'e.g. Computer Architecture - 01 (Spring 2022)',
     }
 
-    @staticmethod
-    def from_cfg(canvas_cfg, args):
-        canvas = json.loads(json.dumps(canvas_cfg.__dict__), object_hook=Canvas)
-        canvas.args = args
-        global _verbose
-        _verbose = args.verbose
-        return canvas
 
-
-    def __init__(self, canvas_cfg):
-        self.__dict__.update(canvas_cfg)
+    def __init__(self, canvas_cfg, args):
+        self.canvas_cfg = dict(Canvas.default_cfg)
+        safe_update(self.canvas_cfg, canvas_cfg)
         self.scores = []
-        self.args = None
+        self.args = args
     
 
     def make_auth_header(self):
         # The Authorization header is shared between GET and PUT
         return {
-            'Authorization': 'Bearer {}'.format(self.access_token)
+            'Authorization': 'Bearer {}'.format(self.canvas_cfg['access_token'])
         }
 
 
     def make_url(self, path):
         # Combine the hostname and path, creating a requestable URL
-        url = 'https://{}/{}'.format(self.host_name, path)
+        url = 'https://{}/{}'.format(self.canvas_cfg['host_name'], path)
         verbose(url)
         return url
 
@@ -226,7 +217,7 @@ class Canvas:
 
     # Upload the accumulated scores to Canvas
     def upload(self):
-        course_id = self.get_course_id(self.course_name)
+        course_id = self.get_course_id(self.canvas_cfg['course_name'])
         assignment_id = self.get_assignment_id(course_id, self.args.project)
         students = self.get_enrollment(course_id)
         self.add_user_ids(self.scores, students)

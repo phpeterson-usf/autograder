@@ -7,7 +7,7 @@ import tomlkit
 from actions.test import Test
 from actions.canvas import Canvas, CanvasMapper
 from actions.git import Git
-from actions.util import load_toml, project_from_cwd
+from actions.util import load_toml, project_from_cwd, safe_update
 
 
 class Args:
@@ -50,8 +50,8 @@ class Config:
     path = dirname / 'config.toml'
 
 
-    def __init__(self, d):
-        self.__dict__.update(d)
+    def __init__(self, cfg):
+        self.cfg = cfg
 
 
     # Helper function for write_empty_actions() to minimize
@@ -97,9 +97,9 @@ class Config:
             Config.write_empty_actions(Config.path, actions)
 
         # Initialize with default cfg for each action module
-        d = {}
+        cfg = {}
         for act in actions:
-            d[act] = eval(f'{act}.default_cfg')
+            cfg[act] = eval(f'{act}.default_cfg')
 
         # Any config in the TOML file overrides defaults
         doc = load_toml(Config.path)
@@ -108,7 +108,7 @@ class Config:
             fatal(f'failed to load {Config.path}')
         for act in actions:
             if doc.get(act):
-                d[act].update(doc[act])
+                safe_update(cfg[act], doc[act])
 
         # Create the Config object
-        return json.loads(json.dumps(d), object_hook=Config)
+        return Config(cfg)
