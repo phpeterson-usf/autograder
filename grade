@@ -50,9 +50,9 @@ def upload_class(cfg, args):
 def make_student_list(cfg, args):
     students = args.students  # from command line
     if not students:          # from config.toml
-        students = cfg.cfg['Config']['students']
+        students = cfg.config_cfg.students
     if not students:          # from CSV file
-        mapper = CanvasMapper(cfg.cfg['CanvasMapper'])
+        mapper = CanvasMapper(cfg.canvas_mapper_cfg)
         students = mapper.get_github_list()
         if not students:
             fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
@@ -66,12 +66,12 @@ def main():
         upload_class(cfg, args)
         return 0
 
-    tester = Test(cfg.cfg['Test'], args)
-    git = Git(cfg.cfg['Git'], args)
+    tester = Test(cfg.test_cfg, args)
+    git = Git(cfg.git_cfg, args)
 
     # Build list of repos to run, either from '.' or list of students
     repos = []
-    subdir = tester.project_cfg['subdir']
+    subdir = tester.project_cfg.subdir
     if args.action == 'test':
         repo = Repo(args.project, local='.', subdir=subdir)
         repos.append(repo)

@@ -1,8 +1,9 @@
 import json
 import os
-from actions.cmd import cmd_exec_capture, cmd_exec_rc
-from actions.util import fatal, make_repo_path, print_red
 import subprocess
+
+from actions.cmd import cmd_exec_capture, cmd_exec_rc
+from actions.util import *
 
 class GitNoCommits(Exception):
     pass
@@ -11,14 +12,16 @@ class GitNoBranches(Exception):
 class GitNoRepo(Exception):
     pass
 
-class Git:
-    default_cfg = {
-        'org': 'your GitHub Classroom org here',
-        'credentials': 'ssh',
-    }
+class GitConfig(Config):
+    def __init__(self, cfg):
+        self.org = 'your GitHub Classroom org here'
+        self.credentials = 'ssh'
+        self.safe_update(cfg)
 
+
+class Git:
     def __init__(self, git_cfg, args):
-        self.cfg = git_cfg
+        self.cfg = GitConfig(git_cfg)
         self.args = args
 
 
@@ -28,8 +31,8 @@ class Git:
 
     def make_remote(self, student):
         repo_path = make_repo_path(self.args.project, student)
-        cred = self.cfg['credentials']
-        org = self.cfg['org']
+        cred = self.cfg.credentials
+        org = self.cfg.org
         if cred == 'ssh':
             return f'git@github.com:{org}/{repo_path}.git'
         elif cred == 'https':
@@ -82,6 +85,9 @@ class Git:
         try:
             rc = cmd_exec_rc(['git', 'clone', remote, local])
             if rc != 0:
+                print_red(str(rc) + ' ')
+                print_red(remote + ' ')
+                print_red(local + ' ')
                 raise GitNoRepo
             if self.args.date:
                 branch = self.get_default_branch(local)

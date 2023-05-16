@@ -123,6 +123,8 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
 
 def cmd_exec_rc(args, wd=None, timeout=TIMEOUT):
     presults = cmd_exec(args, wd=wd, check=False, timeout=timeout)
+    if presults.returncode != 0:
+        print(str(args))
     return presults.returncode
 
 

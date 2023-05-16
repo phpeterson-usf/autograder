@@ -4,10 +4,10 @@ from pathlib import Path
 import pprint
 import tomlkit
 
-from actions.test import Test
-from actions.canvas import Canvas, CanvasMapper
-from actions.git import Git
-from actions.util import load_toml, project_from_cwd, safe_update
+from actions.test import TestConfig
+from actions.canvas import CanvasConfig, CanvasMapperConfig
+from actions.git import GitConfig
+from actions.util import load_toml, project_from_cwd, Config
 
 
 class Args:
@@ -41,17 +41,30 @@ class Args:
         return json.loads(json.dumps(d), object_hook=Args)
 
 
+class ConfigConfig(Config):
+    def __init__(self, cfg):
+        self.students = []
+        self.safe_update(cfg)
+
+"""
+__init__(self, doc)
+  self.canvas = doc.get('Canvas')
+
+ doc['Canvas'] = CanvasConfig({})
+"""
+
 class Config:
-    default_cfg = {
-        'students': [],
-    }
 
     dirname = Path.home() / '.config' / 'grade'
     path = dirname / 'config.toml'
 
 
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self, doc):
+        self.canvas_cfg = doc['Canvas']
+        self.canvas_mapper_cfg = doc['CanvasMapper']
+        self.git_cfg = doc['Git']
+        self.test_cfg = doc['Test']
+        self.config_cfg = ConfigConfig(doc['Config'])
 
 
     # Helper function for write_empty_actions() to minimize
@@ -74,13 +87,13 @@ class Config:
         return tbl
 
 
-    # Make a commented-out tomlkit config for given actions using eval()
-    # to iterate over the list of actions with default configuration
+    # Make a commented-out tomlkit config for given actions using tuples
+    # of the table name and default config for that section
     @staticmethod
-    def write_empty_actions(path, actions):
+    def write_default_tables(path, tpls):
         doc = tomlkit.document()
-        for act in actions:
-            doc[act] = eval(f'Config.make_commented_table({act}.default_cfg)')
+        for t in tpls:
+            doc[t[0]] = Config.make_commented_table(t[1].__dict__)
         toml_data = tomlkit.dumps(doc)
         with open(path, 'w') as f:
             f.write(toml_data)
@@ -89,26 +102,23 @@ class Config:
     # Read the config file, creating it if needed
     @staticmethod
     def from_file():
-        actions = ['Canvas', 'CanvasMapper', 'Config', 'Git',  'Test']
-
         # Create config.toml silently
         if not Config.path.exists():
             Path.mkdir(Config.dirname, parents=True, exist_ok=True)
-            Config.write_empty_actions(Config.path, actions)
-
-        # Initialize with default cfg for each action module
-        cfg = {}
-        for act in actions:
-            cfg[act] = eval(f'{act}.default_cfg')
+            tpls = [
+                ('Canvas', CanvasConfig({})),
+                ('CanvasMapper', CanvasMapperConfig({})),
+                ('Config', ConfigConfig({})),
+                ('Git', GitConfig({})),
+                ('Test', TestConfig({})),
+            ]
+            Config.write_default_tables(Config.path, tpls)
 
         # Any config in the TOML file overrides defaults
         doc = load_toml(Config.path)
         if not doc:
             # This shouldn't happen since we just created the file
             fatal(f'failed to load {Config.path}')
-        for act in actions:
-            if doc.get(act):
-                safe_update(cfg[act], doc[act])
 
         # Create the Config object
-        return Config(cfg)
+        return Config(doc)

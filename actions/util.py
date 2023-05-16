@@ -4,14 +4,16 @@ import tomlkit
 class OutputLimitExceeded(Exception):
     pass
 
-def safe_update(dest, src):
-    # Only copy values from src when the key is in dest
-    # Prevents namespace pollution from TOML config files
-    for k, v in src.items():
-        if k in dest:
-            dest[k] = v
-        else:
-            fatal(f'safe_update ignoring key: {k}')
+class Config(object):
+    def safe_update(self, src):
+        # Only copy values from src when the key is in dest
+        # Prevents namespace pollution from TOML config files
+        dest = self.__dict__
+        for k, v in src.items():
+            if k in dest:
+                dest[k] = v
+            else:
+                fatal(f'safe_update ignoring key: {k}')
 
 def fatal(s):
     print_red(s, '\n')

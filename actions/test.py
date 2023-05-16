@@ -7,42 +7,44 @@ import traceback
 
 from actions.cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
 from actions.util import failed, fatal, format_pass_fail, load_toml, print_green, print_red
-from actions.util import OutputLimitExceeded, safe_update
+from actions.util import OutputLimitExceeded, Config
 
 # One test case out of the list in the TOML test case file
+
+class TestCaseConfig(Config):
+    def __init__(self, cfg):
+        self.case_sensitive = False
+        self.expected = None
+        self.input = None
+        self.name = None
+        self.output = 'stdout'
+        self.rubric = 0
+        self.safe_update(cfg)
+
+
 class TestCase:
-
-    default_cfg = {
-        'case_sensitive': False,
-        'expected': None,
-        'input': None,
-        'name': None,
-        'output': 'stdout',
-        'rubric': 0,
-    }
-
     def __init__(self, tc_cfg, project_cfg, args):
-        self.tc_cfg = dict(TestCase.default_cfg)
-        safe_update(self.tc_cfg, tc_cfg)
+        self.tc_cfg = TestCaseConfig(tc_cfg)
         self.args = args  # need verbose, project
         self.project_cfg = project_cfg  # need strip_output and TIMEOUT
         self.cmd_line = []
-        # self.validate(tc_cfg)
+        #self.validate()
 
 
-    def validate(self, d):
-        test_name = d.get('name', 'unknown')
-        if type(d.get('rubric')) is not int:
-            print(type(d.get('rubric')))
+    def validate(self):
+        test_name = self.tc_cfg.name
+        if type(self.tc_cfg.rubric) is not int:
             print(f'Rubric for test \"{test_name}\" must be an integer')
-        if type(d.get('input')) is not list:
-            fatal(f'Input for test \"{test_name}\" must be a list')
-        if type(d.get('expected')) is not str:
+        if type(self.tc_cfg.input) is not list:
+            print(type(self.tc_cfg.input))
+            #TODO fatal(f'Input for test \"{test_name}\" must be a list')
+        if type(self.tc_cfg.expected) is not str:
+            print(type(self.tc_cfg.expected))
             fatal(f'Expected output for test \"{test_name}\" must be a string')
 
 
     def init_cmd_line(self, digital_path, project_tests_path):
-        for i in self.tc_cfg['input']:
+        for i in self.tc_cfg.input:
             if '$project_tests' in i:
                 param = i.replace('$project_tests', project_tests_path)
             elif '$project' in i:
@@ -55,21 +57,17 @@ class TestCase:
 
 
     def get_actual(self, local):
-        if 'timeout' in self.project_cfg:  # TODO: wrong way to do this?
-            timeout = self.project_cfg['timeout']
-        else:
-            timeout = TIMEOUT
-
-        if self.tc_cfg['output'] == 'stdout':
+        timeout = self.project_cfg.timeout
+        if self.tc_cfg.output == 'stdout':
             # get actual output from stdout
             act = cmd_exec_capture(self.cmd_line, local, timeout=timeout)
         else:
             # ignore stdout and get actual output from the specified file
-            path = os.path.join(local, self.tc_cfg['output'])
+            path = os.path.join(local, self.tc_cfg.output)
             act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout)
     
-        if self.project_cfg.get('strip_output'):
-            act = act.replace(self.project_cfg['strip_output'], '')
+        if self.project_cfg.strip_output:
+            act = act.replace(self.project_cfg.strip_output, '')
         return act
 
     def prepare_cmd_line(self, cmd_line):
@@ -82,7 +80,7 @@ class TestCase:
 
     def make_lines(self, text):
         text_lines = []
-        if not self.tc_cfg['case_sensitive']:
+        if not self.tc_cfg.case_sensitive:
             text = text.lower()
         for line in text.split('\n'):
             text_lines.append(line.strip() + '\n')
@@ -90,7 +88,7 @@ class TestCase:
         
     def match_expected(self, actual):
         # rstrip to remove extra trailing newline
-        exp = self.make_lines(self.tc_cfg['expected'].rstrip())
+        exp = self.make_lines(self.tc_cfg.expected.rstrip())
         act = self.make_lines(actual.rstrip())
 
         cmd_line = self.prepare_cmd_line(self.cmd_line)
@@ -111,25 +109,28 @@ class TestCase:
         return act == exp
 
 
+class TestConfig(Config):
+    def __init__(self, cfg):
+        self.tests_path = '~/tests'
+        self.digital_path = '~/Digital/Digital.jar' # TODO how does this connect with [Digital]?
+        self.safe_update(cfg)
+
+
+class ProjectConfig(Config):
+    def __init__(self, cfg):
+        self.build = 'make'
+        self.strip_output = None
+        self.subdir = None
+        self.timeout = TIMEOUT
+        self.safe_update(cfg)
+
 class Test:
-    default_cfg = {
-        'tests_path': '~/tests',  # TODO how does this connect with [Digital]?
-        'digital_path': '~/Digital/Digital.jar'
-    }
 
     def __init__(self, test_cfg, args):
-        self.test_cfg = dict(Test.default_cfg)
-        safe_update(self.test_cfg, test_cfg)
-    
+        self.test_cfg = TestConfig(test_cfg)    
         self.args = args
-        self.tests_path = os.path.expanduser(self.default_cfg['tests_path'])
-        self.digital_path = os.path.expanduser(self.default_cfg['digital_path'])
-        self.project_cfg = {  # defaults
-            'build': 'make',
-            'strip_output': None,
-            'subdir': None,
-            'timeout': TIMEOUT
-        }
+        self.tests_path = os.path.expanduser(self.test_cfg.tests_path)
+        self.digital_path = os.path.expanduser(self.test_cfg.digital_path)
         self.test_cases = []
         self.load_test_cases()
         self.build_err = ''
@@ -144,20 +145,19 @@ class Test:
         toml_doc = load_toml(path)
 
         # Load the [project] table which contains project-specific config
-        project_cfg = toml_doc.get('project', {})
-        safe_update(self.project_cfg, project_cfg)
+        self.project_cfg = ProjectConfig(toml_doc.get('project', {}))
 
         # Create test cases for each element of the [tests] table
         project_tests_path = os.path.join(self.tests_path, self.args.project)
         for tc_cfg in toml_doc['tests']:
-            tc = TestCase(tc_cfg, project_cfg, self.args)
+            tc = TestCase(tc_cfg, self.project_cfg, self.args)
             tc.init_cmd_line(self.digital_path, project_tests_path)
             self.test_cases.append(tc)
 
 
     def build(self, repo_path):
         build_err = None
-        b = self.project_cfg['build']
+        b = self.project_cfg.build
         if b == 'none':
             return
         if b == 'make':
@@ -193,7 +193,7 @@ class Test:
             actual = test_case.get_actual(repo_path)
             if test_case.match_expected(actual):
                 # Test case passed, accumulate score
-                score = test_case.tc_cfg['rubric']
+                score = test_case.tc_cfg.rubric
         except CalledProcessError:
             friendly_str = 'Program crashed'
             tb_str = traceback.format_exc()
@@ -215,9 +215,9 @@ class Test:
 
         # Record score for later printing/uploading
         result = {
-            'rubric': test_case.tc_cfg['rubric'],
+            'rubric': test_case.tc_cfg.rubric,
             'score' : score,
-            'test'  : test_case.tc_cfg['name'],
+            'test'  : test_case.tc_cfg.name,
         }
         if (friendly_str):
             # Only if there was a failure. That way finding "test_err" in
@@ -316,7 +316,7 @@ class Test:
     def total_rubric(self):
         total = 0
         for tc in self.test_cases:
-            total += tc.tc_cfg['rubric']
+            total += tc.tc_cfg.rubric
         return total
 
 

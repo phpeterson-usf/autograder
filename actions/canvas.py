@@ -18,26 +18,27 @@ def not_found(s):
     fatal(f'not found: {s}')
 
 
+class CanvasMapperConfig(Config):
+    def __init__(self, cfg):
+        self.map_path = 'your CSV mapping file here'
+        self.github_col_name = 'GitHub'
+        self.login_col_name = 'SIS Login ID'
+        self.safe_update(cfg)
+
+
 # Helper class to keep a map between GitHub user name and Canvas login_id
 class CanvasMapper:
 
-    default_cfg = {
-        'map_path': 'your CSV mapping file here',
-        'github_col_name': 'GitHub',
-        'login_col_name': 'SIS Login ID',
-    }
-
 
     def __init__(self, map_cfg):
-        self.map_cfg = dict(CanvasMapper.default_cfg)
-        safe_update(self.map_cfg, map_cfg)
+        self.map_cfg = CanvasMapperConfig(map_cfg)
         self.mapping = {}
 
-        abs_path = Path(self.map_cfg['map_path']).expanduser()
+        abs_path = Path(self.map_cfg.map_path).expanduser()
         with open(abs_path) as f:
             failures = []
-            gh_col_name = self.map_cfg['github_col_name']
-            login_col_name = self.map_cfg['login_col_name']
+            gh_col_name = self.map_cfg.github_col_name
+            login_col_name = self.map_cfg.login_col_name
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
                 github = row[gh_col_name]
@@ -69,19 +70,20 @@ class CanvasMapper:
         return github_list
 
 
+
+class CanvasConfig(Config):
+    def __init__(self, cfg):
+        self.host_name = 'usfca.test.instructure.com or canvas.instructure.com'
+        self.access_token = 'your access token here'
+        self.course_name = 'e.g. Computer Architecture - 01 (Spring 2022)'
+        self.safe_update(cfg)
+
+
 # Handles GET and PUT of scores to Canvas
 class Canvas:
 
-    default_cfg = {
-        'host_name': 'usfca.test.instructure.com or canvas.instructure.com',
-        'access_token': 'your access token here',
-        'course_name': 'e.g. Computer Architecture - 01 (Spring 2022)',
-    }
-
-
     def __init__(self, canvas_cfg, args):
-        self.canvas_cfg = dict(Canvas.default_cfg)
-        safe_update(self.canvas_cfg, canvas_cfg)
+        self.canvas_cfg = CanvasConfig(canvas_cfg)
         self.scores = []
         self.args = args
     
@@ -89,13 +91,13 @@ class Canvas:
     def make_auth_header(self):
         # The Authorization header is shared between GET and PUT
         return {
-            'Authorization': 'Bearer {}'.format(self.canvas_cfg['access_token'])
+            'Authorization': 'Bearer {}'.format(self.canvas_cfg.access_token)
         }
 
 
     def make_url(self, path):
         # Combine the hostname and path, creating a requestable URL
-        url = 'https://{}/{}'.format(self.canvas_cfg['host_name'], path)
+        url = 'https://{}/{}'.format(self.canvas_cfg.host_name, path)
         verbose(url)
         return url
 
@@ -217,7 +219,7 @@ class Canvas:
 
     # Upload the accumulated scores to Canvas
     def upload(self):
-        course_id = self.get_course_id(self.canvas_cfg['course_name'])
+        course_id = self.get_course_id(self.canvas_cfg.course_name)
         assignment_id = self.get_assignment_id(course_id, self.args.project)
         students = self.get_enrollment(course_id)
         self.add_user_ids(self.scores, students)
