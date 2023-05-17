@@ -85,9 +85,6 @@ class Git:
         try:
             rc = cmd_exec_rc(['git', 'clone', remote, local])
             if rc != 0:
-                print_red(str(rc) + ' ')
-                print_red(remote + ' ')
-                print_red(local + ' ')
                 raise GitNoRepo
             if self.args.date:
                 branch = self.get_default_branch(local)
