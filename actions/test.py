@@ -277,6 +277,10 @@ class Test:
 
     # Build and test one repo
     def test(self, student, repo_path):
+
+        if not os.path.isdir(repo_path):
+            fatal(f'Local repo {repo_path} does not exist. Perhaps subdir is wrong?')
+
         tc_results = []
         repo_result = {
             'comment'  : '',
