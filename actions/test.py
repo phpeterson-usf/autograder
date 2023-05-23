@@ -6,8 +6,7 @@ from subprocess import CalledProcessError, TimeoutExpired
 import traceback
 
 from actions.cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
-from actions.util import failed, fatal, format_pass_fail, load_toml, print_green, print_red
-from actions.util import OutputLimitExceeded, Config
+from actions.util import *
 
 # One test case out of the list in the TOML test case file
 
@@ -143,13 +142,18 @@ class Test:
             self.args.project + '.toml'
         )
         toml_doc = load_toml(path)
+        if not toml_doc:
+            warn(f'File not found: {path}. Suggest "git pull" in tests repo')
 
         # Load the [project] table which contains project-specific config
         self.project_cfg = ProjectConfig(toml_doc.get('project', {}))
 
         # Create test cases for each element of the [tests] table
         project_tests_path = os.path.join(self.tests_path, self.args.project)
-        for tc_cfg in toml_doc['tests']:
+        tests = toml_doc.get('tests', {})
+        if not tests:
+            warn(f'No test cases found: {path}')
+        for tc_cfg in tests:
             tc = TestCase(tc_cfg, self.project_cfg, self.args)
             tc.init_cmd_line(self.digital_path, project_tests_path)
             self.test_cases.append(tc)

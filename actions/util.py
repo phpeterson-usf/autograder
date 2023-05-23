@@ -15,13 +15,22 @@ class Config(object):
             else:
                 fatal(f'safe_update ignoring key: {k}')
 
+
 def fatal(s):
     print_red(s, '\n')
     sys.exit(-1)
 
 
+def warn(s):
+    print_yellow(s, '\n')
+
+
 def print_green(s, e=''):
     print('\033[92m' + s + '\033[0m', end=e, flush=True)
+
+
+def print_yellow(s, e=''):
+    print('\033[93m' + s + '\033[0m', end=e, flush=True)
 
 
 def print_red(s, e=''):
@@ -62,7 +71,7 @@ def load_toml(path):
             data = f.read()
             return tomlkit.parse(data)
     except FileNotFoundError as fnf:
-        fatal(f'File not found: {path}. Suggest "git pull" in tests repo')
+        return {}  # handled in callers
     except Exception as e:
         fatal(f'Failed to parse {path}: ' + str(e))
 
