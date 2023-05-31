@@ -16,6 +16,7 @@ class GitConfig(Config):
     def __init__(self, cfg):
         self.org = 'your GitHub Classroom org here'
         self.credentials = 'ssh'
+        self.local_repo_format = '{project}-{github}'
         self.safe_update(cfg)
 
 

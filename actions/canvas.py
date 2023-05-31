@@ -23,6 +23,7 @@ class CanvasMapperConfig(Config):
         self.map_path = 'your CSV mapping file here'
         self.github_col_name = 'GitHub'
         self.login_col_name = 'SIS Login ID'
+        self.name_col_name = 'Name'
         self.safe_update(cfg)
 
 
@@ -63,8 +64,10 @@ class CanvasMapper:
         return ''
 
 
-    def get_github_list(self):
-        github_list = []
+    def get_students(self):
+        students = []
+        for k,v in self.mapping.items():
+            s = Student(k, v
         for github in self.mapping:
             github_list.append(github)
         return github_list

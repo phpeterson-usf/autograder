@@ -13,6 +13,24 @@ from actions.config import Args, Config
 from actions.git import Git
 from actions.test import Test
 
+
+class Student:
+    # Construct a student using a GitHub ID, a first name, and last name
+    def __init__(self, github, first, last):
+        self.github = github
+        self.first = first
+        self.last = last
+
+
+    # Construct Student objects from old-style (pre-CSV) lists of GitHub IDs
+    def from_githubs(githubs):
+        students = []
+        for g in githubs:
+            student = Student(g, None, None)
+            students.append(student)
+        return students
+
+
 class Repo:
     def __init__(self, project, **kwargs):
         self.student = kwargs.get('student')
@@ -46,10 +64,13 @@ def upload_class(cfg, args):
     canvas.upload()
 
 def make_student_list(cfg, args):
-    students = args.students  # from command line
-    if not students:          # from config.toml
-        students = cfg.config_cfg.students
-    if not students:          # from CSV file
+    # try command line args first
+    students = Student.from_githubs(args.students)
+    if not students:
+        # try config file
+        students = Student.from_githubs(cfg.config_cfg.students)
+    if not students:
+        # from CSV file
         mapper = CanvasMapper(cfg.canvas_mapper_cfg)
         students = mapper.get_github_list()
         if not students:
