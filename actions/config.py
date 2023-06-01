@@ -7,7 +7,8 @@ import tomlkit
 from actions.test import TestConfig
 from actions.canvas import CanvasConfig, CanvasMapperConfig
 from actions.git import GitConfig
-from actions.util import load_toml, project_from_cwd, Config
+from actions.github import GithubConfig
+from actions.util import *
 
 
 class Args:
@@ -24,6 +25,8 @@ class Args:
             default=None)
         p.add_argument('-e', '--exec_cmd', help='Command to execute in each repo',
             default=None)
+        p.add_argument('-g', '--github-action', action='store_true', help='test by downloading Github Action result',
+            default=False)
         p.add_argument('-n', '--test-name', help='Run test case with this name',
             default=None)
         p.add_argument('-p', '--project', help='Project name',
@@ -63,6 +66,7 @@ class Config:
         self.canvas_cfg = doc['Canvas']
         self.canvas_mapper_cfg = doc['CanvasMapper']
         self.git_cfg = doc['Git']
+        self.github_cfg = doc['Github']
         self.test_cfg = doc['Test']
         self.config_cfg = ConfigConfig(doc['Config'])
 
@@ -110,6 +114,7 @@ class Config:
                 ('CanvasMapper', CanvasMapperConfig({})),
                 ('Config', ConfigConfig({})),
                 ('Git', GitConfig({})),
+                ('Github', GithubConfig({})),
                 ('Test', TestConfig({})),
             ]
             Config.write_default_tables(Config.path, tpls)

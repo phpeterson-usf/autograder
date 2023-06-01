@@ -1,22 +1,8 @@
 import csv
-import json
 from pathlib import Path
-from pprint import PrettyPrinter
-import requests
-import sys
 
 from actions.util import *
-
-pp = PrettyPrinter(indent=4)
-_verbose = False
-def verbose(s):
-    if _verbose:
-        pp.pprint(s)
-
-
-def not_found(s):
-    fatal(f'not found: {s}')
-
+from actions.server import Server
 
 class CanvasMapperConfig(Config):
     def __init__(self, cfg):
@@ -28,7 +14,6 @@ class CanvasMapperConfig(Config):
 
 # Helper class to keep a map between GitHub user name and Canvas login_id
 class CanvasMapper:
-
 
     def __init__(self, map_cfg):
         self.map_cfg = CanvasMapperConfig(map_cfg)
@@ -53,7 +38,6 @@ class CanvasMapper:
                 # print out students with empty github username
                 # so they can be fixed as a batch
                 fatal(f'No github IDs for logins: {str(failures)}')
-        verbose(self.mapping)
 
 
     def lookup(self, github_name):
@@ -70,7 +54,6 @@ class CanvasMapper:
         return github_list
 
 
-
 class CanvasConfig(Config):
     def __init__(self, cfg):
         self.host_name = 'usfca.test.instructure.com or canvas.instructure.com'
@@ -80,39 +63,14 @@ class CanvasConfig(Config):
 
 
 # Handles GET and PUT of scores to Canvas
-class Canvas:
+class Canvas(Server):
 
     def __init__(self, canvas_cfg, args):
         self.canvas_cfg = CanvasConfig(canvas_cfg)
+        super().__init__(self.canvas_cfg.host_name, self.canvas_cfg.access_token, args.verbose)
         self.scores = []
         self.args = args
     
-
-    def make_auth_header(self):
-        # The Authorization header is shared between GET and PUT
-        return {
-            'Authorization': 'Bearer {}'.format(self.canvas_cfg.access_token)
-        }
-
-
-    def make_url(self, path):
-        # Combine the hostname and path, creating a requestable URL
-        url = 'https://{}/{}'.format(self.canvas_cfg.host_name, path)
-        verbose(url)
-        return url
-
-
-    # Use requests to GET the URL
-    def get_url(self, url):
-        # TODO: replace hard-coded access token with dynamic OAuth token
-        headers = self.make_auth_header()
-        response = requests.get(url, headers=headers)
-        if response.status_code != requests.codes.ok:
-            fatal('{} returned {}'.format(url, response.status_code))
-        obj = json.loads(response.text)
-        verbose(json.dumps(obj, indent=4, sort_keys=True))
-        return obj
-
 
     # Create the URL for GET and PUT methods using Canvas IDs
     def make_submission_url(self, course_id, assignment_id, student_id):
@@ -134,18 +92,11 @@ class Canvas:
     # Upload the grade for the specified course/assignment/student
     def put_submission(self, course_id, assignment_id, student_id, score, comment):
         url = self.make_submission_url(course_id, assignment_id, student_id)
-        headers = self.make_auth_header()
         data = {
             'submission[posted_grade]': score,
             'comment[text_comment]': comment
         }
-
-        response = requests.put(url, data=data, headers=headers)
-        if verbose and response.status_code != requests.codes.ok:
-            d = json.loads(response.text)
-            print(json.dumps(d, indent=4, sort_keys=True))
-
-        return response.status_code == requests.codes.ok
+        return self.put_url(url, {}, data)
 
 
     # Get the ID for the named course, e.g. "Computer Architecture - 01 (Spring 2022)"
@@ -164,8 +115,8 @@ class Canvas:
                 break
 
         if not course_id:
-            not_found(course_name)
-        verbose(f'course_id: {course_id}')
+            self.not_found(course_name)
+        self.verbose(f'course_id: {course_id}')
         return course_id
 
 
@@ -182,18 +133,16 @@ class Canvas:
                 break
 
         if not assignment_id:
-            not_found(assignment_name)
-        verbose(f'assignment_id: {assignment_id}')
+            self.not_found(assignment_name)
+        self.verbose(f'assignment_id: {assignment_id}')
         return assignment_id
 
 
     # Download the list of students enrolled in the given course
     def get_enrollment(self, course_id):
-        user_id = None
         # The enrollment API is paginated. 50 is "big enough" for our purposes
         path = f'api/v1/courses/{course_id}/enrollments?per_page=50'
         url = self.make_url(path)
-
         return self.get_url(url)
 
 

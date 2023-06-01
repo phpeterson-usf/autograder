@@ -1,12 +1,11 @@
 import difflib
-import json
 import os
-import pprint
 from subprocess import CalledProcessError, TimeoutExpired
 import traceback
 
 from actions.cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
 from actions.util import *
+from actions.github import *
 
 # One test case out of the list in the TOML test case file
 
@@ -189,7 +188,7 @@ class Test:
         2. record the failed test case
         3. keep going to the next test cases and repos
         '''
-        score = 0
+        result = init_tc_result(test_case.tc_cfg.rubric, test_case.tc_cfg.name)
         actual = ''
         friendly_str = ''
         tb_str = ''
@@ -197,7 +196,7 @@ class Test:
             actual = test_case.get_actual(repo_path)
             if test_case.match_expected(actual):
                 # Test case passed, accumulate score
-                score = test_case.tc_cfg.rubric
+                result['score'] = test_case.tc_cfg.rubric
         except CalledProcessError:
             friendly_str = 'Program crashed'
             tb_str = traceback.format_exc()
@@ -214,15 +213,9 @@ class Test:
             friendly_str = 'Output contains non-printable characters'
             tb_str = traceback.format_exc()
         except OutputLimitExceeded:
-            friendly_str = 'Program produced too much output (infinit loop?)'
+            friendly_str = 'Program produced too much output (infinite loop?)'
             tb_str = traceback.format_exc()
 
-        # Record score for later printing/uploading
-        result = {
-            'rubric': test_case.tc_cfg.rubric,
-            'score' : score,
-            'test'  : test_case.tc_cfg.name,
-        }
         if (friendly_str):
             # Only if there was a failure. That way finding "test_err" in
             # <project>.json will only find real errors
@@ -281,17 +274,14 @@ class Test:
 
     # Build and test one repo
     def test(self, student, repo_path):
+        tc_results = []
+        repo_result = init_repo_result(student)
 
         if not os.path.isdir(repo_path):
-            fatal(f'Local repo {repo_path} does not exist. Perhaps subdir is wrong?')
-
-        tc_results = []
-        repo_result = {
-            'comment'  : '',
-            'results'  : {},
-            'score'    : 0,
-            'student'  : student
-        }
+            err = f'Local repo {repo_path} does not exist'
+            repo_result['comment'] = err
+            print_red(err, e='\n')
+            return repo_result
 
         self.build_err = self.build(repo_path)
         if self.build_err:
