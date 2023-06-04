@@ -104,6 +104,7 @@ def main():
             elif args.action == 'class' or args.action == 'test':
                 if args.github_action:
                     repo_results = github.get_action_results(repo.student)
+                    print(repo_results['score'])
                 else:
                     repo_results = tester.test(repo.student, repo.local)
                 if args.action == 'class':

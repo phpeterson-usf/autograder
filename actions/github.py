@@ -47,7 +47,7 @@ class Github(Server):
         return url
 
 
-    def get_first_workflow_run(self, student):
+    def get_first_action_run(self, student):
         # Get all of the workflow runs
         url = self.make_action_runs_url(student)
         runs = self.get_url(url, self.github_headers())
@@ -61,43 +61,64 @@ class Github(Server):
         return run
 
 
-    def get_run_log(self, student, run_id):
+    def get_action_run_summary_url(self, student, run):
+        run_url = self.make_action_runs_url(student)
+        jobs_url = run_url + f'/{run["id"]}/jobs'
+        jobs = self.get_url(jobs_url, self.github_headers())
+        if jobs:
+            job_id = jobs['jobs'][0]['id']
+            return 'https://github.com/{}/{}-{}/actions/runs/{}#summary-{}'.format(
+                self.org, self.project, student, run['id'], job_id)
+        else:
+            w = f'No jobs found for {student} run_id: {run["id"]}'
+            warn(w)
+            return w
+
+
+    def get_action_run_score(self, student, run):
+        score = None
         # Download the logs for the most recent run
-        url = self.make_log_url(student, run_id)
+        url = self.make_log_url(student, run['id'])
         log_zip = self.get_url(url, self.github_headers())
 
         # The logs for the workflow run are in zip format
         try:
             with ZipFile(BytesIO(log_zip)) as log_file:
-                log_text = log_file.read('build/5_Test.txt').decode('utf-8')
+                log_text = log_file.read('1_Autograder Results.txt').decode('utf-8')
+            for line in log_text.split('\n'):
+                # Split off the timestamp part of the line
+                line_parts = line.split(' ', 1)
+                if len(line_parts) > 1:
+                    second_part = line_parts[1]
+                    score_parts = second_part.split('=', 1)
+                    # Find the line which specifies the score
+                    if score_parts[0] == 'FINAL_SCORE':
+                        # Split off the earned points from the possible points
+                        score = score_parts[1].split('/')[0]
         except Exception as e:
-            log_text = 'Unzipping workflow log: ' + str(e)
+            log_text = 'Analyzing action log: ' + str(e)
             warn(log_text)
 
-        return log_text
+        if score == None:
+            warn('No score found in action log')
+        return score
 
 
     def get_action_results(self, student):
         repo_result = init_repo_result(student)
-        rubric = 100  # all or nothing?
-        test_name = 'GitHub Workflow'
-        tc_result = init_tc_result(rubric, test_name)
     
-        # Ask github.com for the first action workflow
-        run = self.get_first_workflow_run(student)
+        # Ask github.com for the first action run
+        run = self.get_first_action_run(student)
         if run:
             # Ask github.com for the log for that workflow run
-            log_text = self.get_run_log(student, run['id'])
+            repo_result['score'] = self.get_action_run_score(student, run)
+            # Calculate the web browser (not "api) URL for the first job ID in the action run
+            repo_result['comment'] = self.get_action_run_summary_url(student, run)
         else:
             log_text = 'No workflow runs found'
             warn(log_text)
-        repo_result['comment'] = log_text
 
-        # Mimic what Test.test() does for score accounting
-        if run['conclusion'] == 'success':
-            tc_result['score'] = repo_result['score'] = 100
-            print_green(test_name)
-        else:
-            print_red(test_name)
-        repo_result['results'].append(tc_result)
+        # Notice no test case results are generated here. The idea is that
+        # students go to the "action/run/job/JJJ" URL on github.com to see 
+        # the detailed testing results
         return repo_result

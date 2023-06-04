@@ -40,7 +40,7 @@ class Server:
         response = requests.get(url, headers=headers)
         self.verbose(f'{url} returns {response.status_code}')
         if response.status_code != requests.codes.ok:
-            self.verbose(json.loads(response.text, indent=4, sort_keys=True))
+            self.verbose(json.loads(response.text))
             fatal(f'{url} returned {response.status_code}')
         content_type = response.headers['Content-Type']
         # use 'in' rather than '==' to ignore charset spec in header
