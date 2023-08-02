@@ -13,7 +13,7 @@ from actions.util import *
 class GithubConfig(Config):
     def __init__(self, cfg):
         self.host_name = 'api.github.com'
-        self.access_token = None
+        self.access_token = 'your access token here'
         self.safe_update(cfg)
 
  

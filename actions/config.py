@@ -85,7 +85,7 @@ class Config:
                 line = f'{k} = []'
             else:
                 # If we need booleans, handle python True vs TOML true
-                raise TypeError(f'Not handled: {type(v)}')
+                raise TypeError(f'Not handled: {type(v)} for key: {k}')
             tbl.add(tomlkit.comment(line))
 
         return tbl
