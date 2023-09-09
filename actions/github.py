@@ -49,10 +49,10 @@ class Github(Server):
     def get_first_artifact_for_repo(self, student):
         # Get all artifacts for the workflow run
         url = self.make_repo_artifacts_url(student)
-        artifacts = self.get_url(url, self.github_headers())
 
         artifact = {}
         try:
+            artifacts = self.get_url(url, self.github_headers())
             # The first artifact in the artifacts list is the most recent
             artifact = artifacts['artifacts'][0]
         except Exception as e:
@@ -107,6 +107,7 @@ class Github(Server):
             repo_result['comment'] = self.get_action_run_summary_url(student, artifact)
         else:
             log_text = 'No artifacts found'
+            repo_result['comment'] = log_text
             warn(log_text)
 
         # Notice no test case results are generated here. The idea is that
