@@ -244,7 +244,7 @@ class Test:
         results = []
         if self.args.test_name is not None:
             for tc in self.test_cases:
-                if tc.name == self.args.test_name:
+                if tc.tc_cfg.name == self.args.test_name:
                     results.append(self.run_one_test(repo_path, tc))
         else:
             for tc in self.test_cases:
