@@ -13,7 +13,7 @@ from actions.util import OutputLimitExceeded
 # default command timeout in seconds
 TIMEOUT = 60
 # default output limit in bytes
-OUTPUT_LIMIT = 10000
+OUTPUT_LIMIT = 20000
 # read buffer size
 READ_BUFFER_SIZE = 1024
 
