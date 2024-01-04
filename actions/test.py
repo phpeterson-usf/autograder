@@ -54,6 +54,11 @@ class TestCase:
             self.cmd_line.append(param)
 
 
+    def init_expected(self, project_tests_path):
+        # the expected output can refer to $project_tests by pathname
+        self.tc_cfg.expected = self.tc_cfg.expected.replace('$project_tests', project_tests_path)
+
+
     def get_actual(self, local):
         timeout = self.project_cfg.timeout
         if self.tc_cfg.output == 'stdout':
@@ -154,6 +159,7 @@ class Test:
             warn(f'No test cases found: {path}')
         for tc_cfg in tests:
             tc = TestCase(tc_cfg, self.project_cfg, self.args)
+            tc.init_expected(project_tests_path)
             tc.init_cmd_line(self.digital_path, project_tests_path)
             self.test_cases.append(tc)
 
