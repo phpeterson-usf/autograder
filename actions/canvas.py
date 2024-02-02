@@ -21,23 +21,17 @@ class CanvasMapper:
 
         abs_path = Path(self.map_cfg.map_path).expanduser()
         with open(abs_path) as f:
-            failures = []
             gh_col_name = self.map_cfg.github_col_name
             login_col_name = self.map_cfg.login_col_name
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
                 github = row[gh_col_name]
                 login = row[login_col_name]
-                if not github:
-                    # accumulate students with empty GitHub username
-                    failures.append(login) 
-
-                # set up mapping from login ID to GitHub username
-                self.mapping[github] = login
-            if failures:
-                # print out students with empty github username
-                # so they can be fixed as a batch
-                fatal(f'No github IDs for logins: {str(failures)}')
+                if github:
+                    # set up mapping from login ID to GitHub username
+                    self.mapping[github] = login
+                else:
+                    warn(f'No github ID for login: {login}')
 
 
     def lookup(self, github_name):
