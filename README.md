@@ -40,20 +40,28 @@
     ``` 
 ---
 ## Usage for Students
-1. By default, `grade` assumes that you authenticate to Github using `ssh` and test cases are in `~/tests`. If you need different settings, you can edit the config file: `~/.config/grade/config.toml`:
-    ```toml
-    [Git]
-    credentials = "https"  # default is"ssh"
-
-    [Test]
-    tests_path = "~/myclass/tests"  # default is "~/tests"
-    ```
 1. You can test a project in the current directory like this
     ```
     $ cd ~/project02-phpeterson-usf
     $ grade test
     ```
-    note that `grade` will intuit the project to test based on your current directory.
+    note that `grade` will infer the project name based on your current directory.
+1. `grade` will create a config file in `~/.config/grade/config.toml` containing its default settings.
+You do not need to modify this file unless you need non-default settings
+1. Example settings
+    1. `grade` assumes that you authenticate to Github using `ssh`. If you authenticate to github using http, you
+    could change `config.toml` like this
+        ```toml
+        [Git]
+        credentials = "https"  # default is"ssh"
+        ```
+    1. `grade` assumes that test cases are in `~/tests/`. If you put the your test case repo in a different directory,
+    you could change `config.toml` to point to that directory
+        ```toml
+        [Test]
+        tests_path = "~/myclass/tests"  # default is "~/tests"
+        ```
+    
 ---
 ## Usage for Instructors
 1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
