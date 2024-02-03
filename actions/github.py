@@ -63,32 +63,38 @@ class Github(Server):
         run_url = self.make_action_runs_url(student)
         run_id = artifact['workflow_run']['id']
         jobs_url = run_url + f'/{run_id}/jobs'
-        jobs = self.get_url(jobs_url, self.github_headers())
-        if jobs:
-            job_id = jobs['jobs'][0]['id']
-            return 'https://github.com/{}/{}-{}/actions/runs/{}#summary-{}'.format(
-                self.org, self.project, student, run_id, job_id)
-        else:
-            w = f'No jobs found for {student} run_id: {run_id}'
-            warn(w)
-            return w
+
+        w = None
+        try:
+            jobs = self.get_url(jobs_url, self.github_headers())
+            if jobs:
+                job_id = jobs['jobs'][0]['id']
+                return 'https://github.com/{}/{}-{}/actions/runs/{}#summary-{}'.format(
+                    self.org, self.project, student, run_id, job_id)
+            else:
+                w = f'No jobs found for {student} run_id: {run_id}'
+                warn(w)
+        except Exception as e:
+            # Swallow the exception. get_url() already called warn()
+            pass
+
+        return w
 
 
     def get_artifact_results(self, artifact):
         results = None
         # Download the artifact
         url = artifact['archive_download_url']
-        artifact_zip = self.get_url(url, self.github_headers())
 
         # The logs for the workflow run are in zip format
         try:
+            artifact_zip = self.get_url(url, self.github_headers())
             with ZipFile(BytesIO(artifact_zip)) as log_file:
                 results = log_file.read('grade-results.json')
                 results = json.loads(results.decode('utf-8'))
                 results['grade'] = float(results['grade'])
         except Exception as e:
-            log_text = 'Analyzing artifact: ' + str(e)
-            warn(log_text)
+            warn('Analyzing artifact: ' + str(e))
 
         if results == None:
             warn('No results found in artifact')

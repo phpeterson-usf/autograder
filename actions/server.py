@@ -5,6 +5,8 @@ server.py is a base class for REST servers like Canvas and Github
 import json
 from pprint import PrettyPrinter
 import requests
+import urllib.error
+from urllib.error import HTTPError, URLError
 
 from actions.util import *
 
@@ -24,8 +26,8 @@ class Server:
                 print(s)
 
 
-    def not_found(self, s):
-        fatal(f'not found: {s}')        
+    def not_found(self, s, suggestion):
+        fatal(f'not found: {s}. {suggestion}')
 
 
     def add_auth_header(self, headers):
@@ -37,11 +39,17 @@ class Server:
     def get_url(self, url, headers={}):
         # TODO: replace hard-coded access token with dynamic OAuth token
         headers = self.add_auth_header(headers)
-        response = requests.get(url, headers=headers)
-        self.verbose(f'{url} returns {response.status_code}')
-        if response.status_code != requests.codes.ok:
+        try:
+            response = requests.get(url, headers=headers)
+            self.verbose(f'{url} returns {response.status_code}')
             self.verbose(json.loads(response.text))
-            warn(f'{url} returned {response.status_code}')
+            response.raise_for_status()
+        except Exception as e:
+            # Callers don't have to re-warn() unless they have more info to add
+            warn('get_url: ' + str(e))
+            # Reraise so callers can decide whether it's fatal or not
+            raise e
+
         content_type = response.headers['Content-Type']
         # use 'in' rather than '==' to ignore charset spec in header
         if 'application/json' in content_type:

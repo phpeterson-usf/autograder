@@ -64,7 +64,7 @@ class Canvas(Server):
         super().__init__(self.canvas_cfg.host_name, self.canvas_cfg.access_token, args.verbose)
         self.scores = []
         self.args = args
-    
+
 
     # Create the URL for GET and PUT methods using Canvas IDs
     def make_submission_url(self, course_id, assignment_id, student_id):
@@ -79,7 +79,7 @@ class Canvas(Server):
     # Download the grade for the specified course/assignment/student
     def get_submission(self, course_id, assignment_id, student_id):
         url = self.make_submission_url(course_id, assignment_id, student_id)
-        obj = self.get_url(url)
+        obj = self.get_url(url)  # Let any exception propagate
         return obj['grade']
 
 
@@ -95,40 +95,54 @@ class Canvas(Server):
 
     # Get the ID for the named course, e.g. "Computer Architecture - 01 (Spring 2022)"
     def get_course_id(self, course_name):
+        courses = []
         course_id = None
         path = 'api/v1/courses?per_page=100'
         url = self.make_url(path)
 
-        courses = self.get_url(url)
-        for c in courses:
-            if not 'name' in c:
-                continue
+        try:
+            courses = self.get_url(url)
+        except Exception as e:
+            # GET /courses raised an exception, usually a connection error
+            self.not_found(course_name, 'Perhaps the Canvas host_name or access_token is wrong')
 
-            if c['name'] == course_name:
-                course_id = c['id']
-                break
+        if courses:
+            for c in courses:
+                if c.get('name') == course_name:
+                    course_id = c['id']
+                    break
 
         if not course_id:
-            self.not_found(course_name)
-        self.verbose(f'course_id: {course_id}')
+            # GET /courses succeeded but the requested course_name is not in the response
+            self.not_found(course_name,
+                'Perhaps the course_name is wrong in config.toml, or the course is not in Canvas')
         return course_id
 
 
     # Get the ID for the named assignment, e.g. 'lab01'
     def get_assignment_id(self, course_id, assignment_name):
+        assignments = []
         assignment_id = None
         path = f'api/v1/courses/{course_id}/assignments?per_page=50'
         url = self.make_url(path)
 
-        assignments = self.get_url(url)
+        try:
+            assignments = self.get_url(url)
+        except Exception as e:
+            # If we had a bad hostname or course name/ID, that would have killed
+            # us before now, so not sure how we can catch an exception on GET assignments/
+            self.not_found(assignment_name, 'No idea how this can happen')
+
         for a in assignments:
-            if a['name'] == assignment_name:
+            if a.get('name') == assignment_name:
                 assignment_id = a['id']
                 break
 
         if not assignment_id:
-            self.not_found(assignment_name)
-        self.verbose(f'assignment_id: {assignment_id}')
+            # GET /assignments succeeded but the requested assignment_name is
+            # not in the response
+            self.not_found(assignment_name, 'Perhaps that assignment does not exist in Canvas')
+
         return assignment_id
 
 
@@ -137,7 +151,8 @@ class Canvas(Server):
         # The enrollment API is paginated. 50 is "big enough" for our purposes
         path = f'api/v1/courses/{course_id}/enrollments?per_page=50'
         url = self.make_url(path)
-        return self.get_url(url)
+
+        return self.get_url(url)  # Let any exception propagate
 
 
     # Add a Canvas user_id to each score dict so we can use the submission API
