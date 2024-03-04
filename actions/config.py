@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 import pprint
 import tomlkit
@@ -58,7 +59,10 @@ __init__(self, doc)
 
 class Config:
 
-    dirname = Path.home() / '.config' / 'grade'
+    if os.environ.get('GRADE_CONFIG_DIR'):
+        dirname =  Path(os.environ['GRADE_CONFIG_DIR']).expanduser()
+    else:
+        dirname = Path.home() / '.config' / 'grade'
     path = dirname / 'config.toml'
 
 

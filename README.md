@@ -102,6 +102,9 @@ You do not need to modify this file unless you need non-default settings
     project02-gdbenson       01+ 02+  10/10
     ```
 1. Each test case can pass or fail. The score is shown as the total earned/total available, based on the `rubric` field in each test case
+1. Optional config: If you want to put `config.toml` into another location (perhaps a per-semester directory), you can use the shell environment variable
+`GRADE_CONFIG_DIR` which causes the grade script to look for `config.toml` in the named directory. For example, `~/.bashrc` might contain
+`export GRADE_CONFIG_DIR=~/cs521-s24` or whatever directory is useful to you.
 
 ## Test Cases
 1. Instructors must create their own repo for the test cases for the class projects. Students will clone and pull this repo. We create this repo in the Github Classroom Organization, but that's up to you.
