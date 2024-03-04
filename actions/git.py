@@ -67,6 +67,7 @@ class Git:
             "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
         lines =  cmd_exec_capture(cmd, wd=local)
         if len(lines) == 0:
+            print(' '.join(cmd))
             raise GitNoCommits
         split_lines = lines.split("\n")
         commit_line = split_lines[0]
@@ -105,3 +106,16 @@ class Git:
         branch = self.get_default_branch(local)
         cmd_exec_rc(['git', 'checkout', branch], wd=local)
         cmd_exec_rc(['git', 'pull'], wd=local)
+
+
+    def get_url_for_hash(self, student):
+        local = self.make_local(student)
+        repo_path = make_repo_path(self.args.project, student)
+        try:
+            cmd = ['git', 'rev-parse', '--short', 'HEAD']
+            commit_hash = cmd_exec_capture(cmd, wd=local)
+            return f'https://github.com/{self.cfg.org}/{repo_path}/tree/{commit_hash}'
+        except Exception as e:
+            # Can this happen?
+            print_red(e)
+            return ''
