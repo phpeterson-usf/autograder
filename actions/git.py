@@ -108,14 +108,15 @@ class Git:
         cmd_exec_rc(['git', 'pull'], wd=local)
 
 
-    def get_url_for_hash(self, student):
+    def get_url_for_hash(self, comment, student):
         local = self.make_local(student)
         repo_path = make_repo_path(self.args.project, student)
         try:
             cmd = ['git', 'rev-parse', '--short', 'HEAD']
             commit_hash = cmd_exec_capture(cmd, wd=local)
-            return f'https://github.com/{self.cfg.org}/{repo_path}/tree/{commit_hash}'
-        except Exception as e:
-            # Can this happen?
-            print_red(e)
-            return ''
+            url = f'https://github.com/{self.cfg.org}/{repo_path}/tree/{commit_hash}'
+            return f'Test results for repo as of this commit: {url}\n\n' + comment
+        except Exception as err:
+            # Exceptions like FileNotFound were reported in test() 
+            # Just leave any previous comment untouched
+            return comment

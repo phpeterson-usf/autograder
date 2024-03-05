@@ -259,8 +259,8 @@ class Test:
 
 
     # Build up the submission comment to send to Canvas
-    def make_comment(self, tc_results, url_for_hash):
-        comment = f'Test results for repo as of this commit: {url_for_hash}\n\n'
+    def make_comment(self, tc_results):
+        comment = ''
         if (self.build_err):
             comment += f'{self.build_err} '
         for result in tc_results:
@@ -279,7 +279,7 @@ class Test:
 
 
     # Build and test one repo
-    def test(self, student, repo_path, url_for_hash):
+    def test(self, student, repo_path):
         tc_results = []
         repo_result = init_repo_result(student)
 
@@ -302,7 +302,7 @@ class Test:
         repo_result.update({
             'results': tc_results,
             'score'  : self.total_score(tc_results),
-            'comment': self.make_comment(tc_results, url_for_hash)
+            'comment': self.make_comment(tc_results)
         })
 
         # Print net score for the repo

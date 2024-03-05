@@ -106,9 +106,9 @@ def main():
                     repo_results = github.get_action_results(repo.student)
                     print(repo_results['score'])
                 else:
-                    url_for_hash = git.get_url_for_hash(repo.student)
-                    repo_results = tester.test(repo.student, repo.local, url_for_hash)
+                    repo_results = tester.test(repo.student, repo.local)
                 if args.action == 'class':
+                    repo_results['comment'] = git.get_url_for_hash(repo_results['comment'], repo.student)
                     class_results.append(repo_results)
         except Exception as e:
             print_red(traceback.format_exc(), '\n');
