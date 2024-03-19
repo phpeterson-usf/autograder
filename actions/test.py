@@ -98,16 +98,15 @@ class TestCase:
         cmd_line_str = ' '.join(cmd_line)
 
         if self.args.very_verbose:
-            print(f"===[{self.tc_cfg.name}]===expected\n$ {cmd_line_str}\n{exp}")
+            print(f"\n\n===[{self.tc_cfg.name}]===expected\n$ {cmd_line_str}\n{exp}")
             print()
             print(f"===[{self.tc_cfg.name}]===actual\n$ {cmd_line_str}\n{act}")
-            print()
+
         if self.args.verbose and (act != exp):
-            print(f"===[{self.tc_cfg.name}]===diff\n$ {cmd_line_str}")
+            print(f"\n\n===[{self.tc_cfg.name}]===diff\n$ {cmd_line_str}")
             diff = difflib.context_diff(exp, act, fromfile='expected', tofile='actual')
             for line in diff:
                 print(line, end='')
-            print()
 
         return act == exp
 
