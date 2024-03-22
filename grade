@@ -66,8 +66,10 @@ def main():
         return 0
 
     tester = Test(cfg.test_cfg, args)
-    git = Git(cfg.git_cfg, args)
-    github = Github(cfg.github_cfg, args, git.cfg.org)
+
+    if args.action != 'test':
+        git = Git(cfg.git_cfg, args)
+        github = Github(cfg.github_cfg, args, git.cfg.org)
 
     # Build list of repos to run, either from '.' or list of students
     repos = []
