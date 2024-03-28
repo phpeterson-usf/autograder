@@ -67,12 +67,15 @@ class Config:
 
 
     def __init__(self, doc):
-        self.canvas_cfg = doc['Canvas']
-        self.canvas_mapper_cfg = doc['CanvasMapper']
-        self.git_cfg = doc['Git']
-        self.github_cfg = doc['Github']
         self.test_cfg = doc['Test']
-        self.config_cfg = ConfigConfig(doc['Config'])
+        try:
+            self.canvas_cfg = doc['Canvas']
+            self.canvas_mapper_cfg = doc['CanvasMapper']
+            self.git_cfg = doc['Git']
+            self.github_cfg = doc['Github']
+            self.config_cfg = ConfigConfig(doc['Config'])
+        except KeyError:
+            pass # Optional instructor-only keys
 
 
     # Helper function for write_empty_actions() to minimize
