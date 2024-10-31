@@ -61,13 +61,16 @@ class TestCase:
 
     def get_actual(self, local):
         timeout = self.project_cfg.timeout
+        capture_stderr = self.project_cfg.capture_stderr
         if self.tc_cfg.output == 'stdout':
             # get actual output from stdout
-            act = cmd_exec_capture(self.cmd_line, local, timeout=timeout)
+            act = cmd_exec_capture(self.cmd_line, local, timeout=timeout, 
+                                   capture_stderr=capture_stderr)
         else:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.tc_cfg.output)
-            act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout)
+            act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout,
+                                   capture_stderr=capture_stderr)
     
         if self.project_cfg.strip_output:
             act = act.replace(self.project_cfg.strip_output, '')
@@ -124,6 +127,7 @@ class ProjectConfig(Config):
         self.strip_output = None
         self.subdir = None
         self.timeout = TIMEOUT
+        self.capture_stderr = True
         self.safe_update(cfg)
 
 class Test:
