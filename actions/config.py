@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 import pprint
 import tomlkit
@@ -7,7 +8,8 @@ import tomlkit
 from actions.test import TestConfig
 from actions.canvas import CanvasConfig, CanvasMapperConfig
 from actions.git import GitConfig
-from actions.util import load_toml, project_from_cwd, Config
+from actions.github import GithubConfig
+from actions.util import *
 
 
 class Args:
@@ -24,6 +26,8 @@ class Args:
             default=None)
         p.add_argument('-e', '--exec_cmd', help='Command to execute in each repo',
             default=None)
+        p.add_argument('-g', '--github-action', action='store_true', help='test by downloading Github Action result',
+            default=False)
         p.add_argument('-n', '--test-name', help='Run test case with this name',
             default=None)
         p.add_argument('-p', '--project', help='Project name',
@@ -55,16 +59,41 @@ __init__(self, doc)
 
 class Config:
 
-    dirname = Path.home() / '.config' / 'grade'
-    path = dirname / 'config.toml'
-
 
     def __init__(self, doc):
         self.canvas_cfg = doc['Canvas']
         self.canvas_mapper_cfg = doc['CanvasMapper']
         self.git_cfg = doc['Git']
+        self.github_cfg = doc['Github']
         self.test_cfg = doc['Test']
         self.config_cfg = ConfigConfig(doc['Config'])
+
+
+    @staticmethod
+    def get_path(verbose):
+        fname = 'config.toml'
+        if os.environ.get('GRADE_CONFIG_DIR'):
+            # First choice: config file in dir named by env var
+            dirname = Path(os.environ['GRADE_CONFIG_DIR']).expanduser()
+        else:
+            # Second choice: traverse parent dirs looking for config file
+            found = False
+            dirname = Path(os.getcwd()).absolute()
+            while not found:
+                p = dirname / fname
+                if p.exists():
+                    found = True
+                else:
+                    dirname = dirname.parent
+                    if dirname == Path('~').expanduser():
+                        break
+            if not found:
+                # Last choice: config file will be read (and created) in ~/.config
+                dirname = Path.home() / '.config' / 'grade'
+        path = dirname / fname
+        if verbose:
+            print(f'config file: {path}')
+        return path
 
 
     # Helper function for write_empty_actions() to minimize
@@ -81,7 +110,7 @@ class Config:
                 line = f'{k} = []'
             else:
                 # If we need booleans, handle python True vs TOML true
-                raise TypeError(f'Not handled: {type(v)}')
+                raise TypeError(f'Not handled: {type(v)} for key: {k}')
             tbl.add(tomlkit.comment(line))
 
         return tbl
@@ -101,24 +130,26 @@ class Config:
 
     # Read the config file, creating it if needed
     @staticmethod
-    def from_file():
+    def from_path(path):
         # Create config.toml silently
-        if not Config.path.exists():
-            Path.mkdir(Config.dirname, parents=True, exist_ok=True)
+        if not path.exists():
+            # This is gross but I wasn't sure how to fix parent() not supported by PosixPath
+            Path.mkdir(Path(os.path.dirname(path)), parents=True, exist_ok=True)
             tpls = [
                 ('Canvas', CanvasConfig({})),
                 ('CanvasMapper', CanvasMapperConfig({})),
                 ('Config', ConfigConfig({})),
                 ('Git', GitConfig({})),
+                ('Github', GithubConfig({})),
                 ('Test', TestConfig({})),
             ]
-            Config.write_default_tables(Config.path, tpls)
+            Config.write_default_tables(path, tpls)
 
         # Any config in the TOML file overrides defaults
-        doc = load_toml(Config.path)
+        doc = load_toml(path)
         if not doc:
             # This shouldn't happen since we just created the file
-            fatal(f'failed to load {Config.path}')
+            fatal(f'failed to load {path}')
 
         # Create the Config object
         return Config(doc)

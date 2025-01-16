@@ -40,20 +40,28 @@
     ``` 
 ---
 ## Usage for Students
-1. By default, `grade` assumes that you authenticate to Github using `ssh` and test cases are in `~/tests`. If you need different settings, you can edit the config file: `~/.config/grade/config.toml`:
-    ```toml
-    [Git]
-    credentials = "https"  # default is"ssh"
-
-    [Test]
-    tests_path = "~/myclass/tests"  # default is "~/tests"
-    ```
 1. You can test a project in the current directory like this
     ```
     $ cd ~/project02-phpeterson-usf
     $ grade test
     ```
-    note that `grade` will intuit the project to test based on your current directory.
+    note that `grade` will infer the project name based on your current directory.
+1. `grade` will create a config file in `~/.config/grade/config.toml` containing its default settings.
+You do not need to modify this file unless you need non-default settings
+1. Example settings
+    1. `grade` assumes that you authenticate to Github using `ssh`. If you authenticate to github using http, you
+    could change `config.toml` like this
+        ```toml
+        [Git]
+        credentials = "https"  # default is"ssh"
+        ```
+    1. `grade` assumes that test cases are in `~/tests/`. If you put the your test case repo in a different directory,
+    you could change `config.toml` to point to that directory
+        ```toml
+        [Test]
+        tests_path = "~/myclass/tests"  # default is "~/tests"
+        ```
+    
 ---
 ## Usage for Instructors
 1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
@@ -94,6 +102,11 @@
     project02-gdbenson       01+ 02+  10/10
     ```
 1. Each test case can pass or fail. The score is shown as the total earned/total available, based on the `rubric` field in each test case
+1. Optional config: If you want to put `config.toml` into another location (perhaps a per-semester directory), you can use the shell environment variable
+`GRADE_CONFIG_DIR` which causes the grade script to look for `config.toml` in the named directory. For example, `~/.bashrc` might contain
+`export GRADE_CONFIG_DIR=~/cs521-s24` or whatever directory is useful to you.
+1. Optional config: If you need more than one config file at a time, you may create a `config.toml` file in any 
+directory under your home directory, and `grade` will prefer that to `~/.config/grade/`
 
 ## Test Cases
 1. Instructors must create their own repo for the test cases for the class projects. Students will clone and pull this repo. We create this repo in the Github Classroom Organization, but that's up to you.
@@ -117,6 +130,8 @@
     [[tests]]
     input = ["python3", "$project.py"]
     ```
+
+### Input and Output Variations
 1. Test cases can have input files in your `tests` repo using the keyword `$project_tests`, which will be 
 substituted for `$testspath/$project/`. In this example, substitution gives the input file as `$testspath/project02/testinput.txt`
     ```toml
@@ -132,11 +147,32 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
     input = ["./$project", "-o", "04.txt"]
     ```
     If `output` is not given, `grade` defaults to `stdout`
+1. Comparing expected output with actual output is case-insentitive by default. If you want case-sensitive comparison, you can set that in a test case
+    ```toml
+    [[tests]]
+    name = to_upper
+    input = input = ["./$project", "foObAr1"]
+    expected = "FOOBAR1"
+    case_sensitive = true
+    ```
+1. Autograder assumes that the student repo will be the working directory for testing. If your project requires a subdirectory within all student repos, you can add that in the `[project]` settings in the test case TOML file
+    ```toml
+    [project]
+    subdir = "xv6"
+    ```
+### Infinite Loops
+1. Autograder will wait for 60 seconds for a program to finish before concluding that the program is in an infinite loop and killing it. If you need to wait longer than 60 seconds, you can change that setting in the `[project]` section of the test case TOML file
+    ```toml
+    [project]
+    timeout = 120  # two minutes
+    ```
+1. Autograder will collect at most 10,000 bytes of output before concluding that the program is in an infinite loop and killing it. 
 
 ## Command Line Parameters
 1. `grade` supports these command-line parameters
 * `-d/--date` is the date to use for grade clone
 * `-e/--exec` provide commands to execute (e.g. `git pull; make clean`)
+* `-g/--github-action` tells `grade class` to get the test result from `api.github.com` rather than local testing
 * `-n/--name` with `grade test` runs one named test case, rather than all of them
 * `-p/--project` is the name of the project, which is substituted into repo names and test case inputs
 * `-v/--verbose` shows expected and actual for failing test cases
@@ -196,4 +232,20 @@ download that spreadsheet to a local CSV file, you can give the mapping configur
     ```toml
     [Test]
     digital_path = "~/myclass/Digital/Digital.jar"
+    ```
+
+## Using GitHub Actions
+1. If you use GitHub Actions to do the testing, autograder can download the results for each student repo and upload the class results to Canvas
+1. If you use `grade class` with the flag `-g/--github-action`, autograder can use the GitHub REST API to download the results into a JSON file
+    ```sh
+    grade class -p project01 -g
+    ```
+1. Once we have the class results in a JSON file, you can upload them to Canvas
+    ```
+    grade upload -p project01
+    ```
+1. To configure autograder to download the results of GitHub Actions, edit `~/.config/grade/config.toml` to include these settings
+    ```toml
+    [Github]
+    access_token = "xxx" # create in your Github settings | Developer Settings | Tokens (classic)  
     ```

@@ -1,22 +1,8 @@
 import csv
-import json
 from pathlib import Path
-from pprint import PrettyPrinter
-import requests
-import sys
 
 from actions.util import *
-
-pp = PrettyPrinter(indent=4)
-_verbose = False
-def verbose(s):
-    if _verbose:
-        pp.pprint(s)
-
-
-def not_found(s):
-    fatal(f'not found: {s}')
-
+from actions.server import Server
 
 class CanvasMapperConfig(Config):
     def __init__(self, cfg):
@@ -30,31 +16,23 @@ class CanvasMapperConfig(Config):
 # Helper class to keep a map between GitHub user name and Canvas login_id
 class CanvasMapper:
 
-
     def __init__(self, map_cfg):
         self.map_cfg = CanvasMapperConfig(map_cfg)
         self.mapping = {}
 
         abs_path = Path(self.map_cfg.map_path).expanduser()
         with open(abs_path) as f:
-            failures = []
             gh_col_name = self.map_cfg.github_col_name
             login_col_name = self.map_cfg.login_col_name
             reader = csv.DictReader(f.read().splitlines())
             for row in reader:
                 github = row[gh_col_name]
                 login = row[login_col_name]
-                if not github:
-                    # accumulate students with empty GitHub username
-                    failures.append(login) 
-
-                # set up mapping from login ID to GitHub username
-                self.mapping[github] = login
-            if failures:
-                # print out students with empty github username
-                # so they can be fixed as a batch
-                fatal(f'No github IDs for logins: {str(failures)}')
-        verbose(self.mapping)
+                if github:
+                    # set up mapping from login ID to GitHub username
+                    self.mapping[github] = login
+                else:
+                    warn(f'No github ID for login: {login}')
 
 
     def lookup(self, github_name):
@@ -73,7 +51,6 @@ class CanvasMapper:
         return github_list
 
 
-
 class CanvasConfig(Config):
     def __init__(self, cfg):
         self.host_name = 'usfca.test.instructure.com or canvas.instructure.com'
@@ -83,38 +60,13 @@ class CanvasConfig(Config):
 
 
 # Handles GET and PUT of scores to Canvas
-class Canvas:
+class Canvas(Server):
 
     def __init__(self, canvas_cfg, args):
         self.canvas_cfg = CanvasConfig(canvas_cfg)
+        super().__init__(self.canvas_cfg.host_name, self.canvas_cfg.access_token, args.verbose)
         self.scores = []
         self.args = args
-    
-
-    def make_auth_header(self):
-        # The Authorization header is shared between GET and PUT
-        return {
-            'Authorization': 'Bearer {}'.format(self.canvas_cfg.access_token)
-        }
-
-
-    def make_url(self, path):
-        # Combine the hostname and path, creating a requestable URL
-        url = 'https://{}/{}'.format(self.canvas_cfg.host_name, path)
-        verbose(url)
-        return url
-
-
-    # Use requests to GET the URL
-    def get_url(self, url):
-        # TODO: replace hard-coded access token with dynamic OAuth token
-        headers = self.make_auth_header()
-        response = requests.get(url, headers=headers)
-        if response.status_code != requests.codes.ok:
-            fatal('{} returned {}'.format(url, response.status_code))
-        obj = json.loads(response.text)
-        verbose(json.dumps(obj, indent=4, sort_keys=True))
-        return obj
 
 
     # Create the URL for GET and PUT methods using Canvas IDs
@@ -130,74 +82,80 @@ class Canvas:
     # Download the grade for the specified course/assignment/student
     def get_submission(self, course_id, assignment_id, student_id):
         url = self.make_submission_url(course_id, assignment_id, student_id)
-        obj = self.get_url(url)
+        obj = self.get_url(url)  # Let any exception propagate
         return obj['grade']
 
 
     # Upload the grade for the specified course/assignment/student
     def put_submission(self, course_id, assignment_id, student_id, score, comment):
         url = self.make_submission_url(course_id, assignment_id, student_id)
-        headers = self.make_auth_header()
         data = {
             'submission[posted_grade]': score,
             'comment[text_comment]': comment
         }
-
-        response = requests.put(url, data=data, headers=headers)
-        if verbose and response.status_code != requests.codes.ok:
-            d = json.loads(response.text)
-            print(json.dumps(d, indent=4, sort_keys=True))
-
-        return response.status_code == requests.codes.ok
+        return self.put_url(url, {}, data)
 
 
     # Get the ID for the named course, e.g. "Computer Architecture - 01 (Spring 2022)"
     def get_course_id(self, course_name):
+        courses = []
         course_id = None
         path = 'api/v1/courses?per_page=100'
         url = self.make_url(path)
 
-        courses = self.get_url(url)
-        for c in courses:
-            if not 'name' in c:
-                continue
+        try:
+            courses = self.get_url(url)
+        except Exception as e:
+            # GET /courses raised an exception, usually a connection error
+            self.not_found(course_name, 'Perhaps the Canvas host_name or access_token is wrong')
 
-            if c['name'] == course_name:
-                course_id = c['id']
-                break
+        if courses:
+            for c in courses:
+                if c.get('name') == course_name:
+                    course_id = c['id']
+                    break
 
         if not course_id:
-            not_found(course_name)
-        verbose(f'course_id: {course_id}')
+            # GET /courses succeeded but the requested course_name is not in the response
+            self.not_found(course_name,
+                'Perhaps the course_name is wrong in config.toml, or the course is not in Canvas')
         return course_id
 
 
     # Get the ID for the named assignment, e.g. 'lab01'
     def get_assignment_id(self, course_id, assignment_name):
+        assignments = []
         assignment_id = None
         path = f'api/v1/courses/{course_id}/assignments?per_page=50'
         url = self.make_url(path)
 
-        assignments = self.get_url(url)
+        try:
+            assignments = self.get_url(url)
+        except Exception as e:
+            # If we had a bad hostname or course name/ID, that would have killed
+            # us before now, so not sure how we can catch an exception on GET assignments/
+            self.not_found(assignment_name, 'No idea how this can happen')
+
         for a in assignments:
-            if a['name'] == assignment_name:
+            if a.get('name') == assignment_name:
                 assignment_id = a['id']
                 break
 
         if not assignment_id:
-            not_found(assignment_name)
-        verbose(f'assignment_id: {assignment_id}')
+            # GET /assignments succeeded but the requested assignment_name is
+            # not in the response
+            self.not_found(assignment_name, 'Perhaps that assignment does not exist in Canvas')
+
         return assignment_id
 
 
     # Download the list of students enrolled in the given course
     def get_enrollment(self, course_id):
-        user_id = None
         # The enrollment API is paginated. 50 is "big enough" for our purposes
         path = f'api/v1/courses/{course_id}/enrollments?per_page=50'
         url = self.make_url(path)
 
-        return self.get_url(url)
+        return self.get_url(url)  # Let any exception propagate
 
 
     # Add a Canvas user_id to each score dict so we can use the submission API

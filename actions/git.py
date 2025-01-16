@@ -68,6 +68,7 @@ class Git:
             "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
         lines =  cmd_exec_capture(cmd, wd=local)
         if len(lines) == 0:
+            print(' '.join(cmd))
             raise GitNoCommits
         split_lines = lines.split("\n")
         commit_line = split_lines[0]
@@ -106,3 +107,17 @@ class Git:
         branch = self.get_default_branch(local)
         cmd_exec_rc(['git', 'checkout', branch], wd=local)
         cmd_exec_rc(['git', 'pull'], wd=local)
+
+
+    def get_url_for_hash(self, comment, student):
+        local = self.make_local(student)
+        repo_path = make_repo_path(self.args.project, student)
+        try:
+            cmd = ['git', 'rev-parse', '--short', 'HEAD']
+            commit_hash = cmd_exec_capture(cmd, wd=local)
+            url = f'https://github.com/{self.cfg.org}/{repo_path}/tree/{commit_hash}'
+            return f'Test results for repo as of this commit: {url}\n\n' + comment
+        except Exception as err:
+            # Exceptions like FileNotFound were reported in test() 
+            # Just leave any previous comment untouched
+            return comment

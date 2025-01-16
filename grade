@@ -11,6 +11,7 @@ from actions.util import *
 from actions.canvas import Canvas, CanvasMapper
 from actions.config import Args, Config
 from actions.git import Git
+from actions.github import Github
 from actions.test import Test
 
 
@@ -55,8 +56,8 @@ def upload_class(cfg, args):
     with open(path) as f:
         data = f.read()
         class_results = json.loads(data)
-    canvas = Canvas(cfg.cfg['Canvas'], args)
-    mapper = CanvasMapper(cfg.cfg['CanvasMapper'])
+    canvas = Canvas(cfg.canvas_cfg, args)
+    mapper = CanvasMapper(cfg.canvas_mapper_cfg)
     for result in class_results:
         # Map GitHub username to Canvas SIS Login ID using imported CSV file
         login_id = mapper.lookup(result['student'])
@@ -74,12 +75,12 @@ def make_student_list(cfg, args):
         mapper = CanvasMapper(cfg.canvas_mapper_cfg)
         students = mapper.get_github_list()
         if not students:
-            fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
+            fatal(f"Must either 'test' one repo or give a list of students in {Config.get_path()}")
     return students
 
 def main():
-    cfg = Config.from_file()
     args = Args.from_cmdline()
+    cfg = Config.from_path(Config.get_path(args.verbose))
 
     if args.action == 'upload':
         upload_class(cfg, args)
@@ -87,6 +88,7 @@ def main():
 
     tester = Test(cfg.test_cfg, args)
     git = Git(cfg.git_cfg, args)
+    github = Github(cfg.github_cfg, args, git.cfg.org)
 
     # Build list of repos to run, either from '.' or list of students
     repos = []
@@ -121,8 +123,13 @@ def main():
                 output = cmd_exec_capture(args.exec_cmd, wd=repo.local, shell=True)
                 print(output)
             elif args.action == 'class' or args.action == 'test':
-                repo_results = tester.test(repo.student, repo.local)
+                if args.github_action:
+                    repo_results = github.get_action_results(repo.student)
+                    print(repo_results['score'])
+                else:
+                    repo_results = tester.test(repo.student, repo.local)
                 if args.action == 'class':
+                    repo_results['comment'] = git.get_url_for_hash(repo_results['comment'], repo.student)
                     class_results.append(repo_results)
         except Exception as e:
             print_red(traceback.format_exc(), '\n');

@@ -1,3 +1,7 @@
+"""
+util.py is the "junk drawer" of code which is shared by multiple modules
+"""
+
 import sys
 import tomlkit
 
@@ -75,8 +79,10 @@ def load_toml(path):
     except Exception as e:
         fatal(f'Failed to parse {path}: ' + str(e))
 
+
 def make_repo_path(project, student):
     return f'{project}-{student}'
+
 
 def project_from_cwd(cwd):
     # if the current directory is named like a given project (project-username),
@@ -86,3 +92,24 @@ def project_from_cwd(cwd):
     # eg. if cwd is '/path/to/project1', use 'project1'
     i = cwd.name.find('-')
     return cwd.name if i == -1 else cwd.name[:i]
+
+
+def init_repo_result(student):
+    # Shared between test.py and github.py
+    # Write this as a plain dict rather than a class so it's JSON serializable
+    return {
+            'comment'  : '',
+            'results'  : [],
+            'score'    : 0,
+            'student'  : student
+    }
+
+
+def init_tc_result(rubric, test_name):
+    # Shared between test.py and github.py
+    # Write this as a plain dict rather than a class so it's JSON serializable
+    return {
+        'rubric': rubric,
+        'score' : 0,
+        'test'  : test_name,
+    }

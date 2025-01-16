@@ -13,7 +13,7 @@ from actions.util import OutputLimitExceeded
 # default command timeout in seconds
 TIMEOUT = 60
 # default output limit in bytes
-OUTPUT_LIMIT = 10000
+OUTPUT_LIMIT = 220000
 # read buffer size
 READ_BUFFER_SIZE = 1024
 
@@ -46,7 +46,7 @@ def cmd_cleanup():
 
 
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
-             output_limit=OUTPUT_LIMIT):
+             output_limit=OUTPUT_LIMIT, capture_stderr=True):
     presults = ProcResults(0, None, None)
 
     global global_cleanup_registered
@@ -57,8 +57,14 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
         global_cleanup_registered = True    
         atexit.register(cmd_cleanup)
 
+    # stderr
+    if capture_stderr:
+        stderr=subprocess.STDOUT
+    else:
+        stderr=subprocess.DEVNULL
+    
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=stderr, 
                              start_new_session=True, cwd=wd, shell=shell)
 
         #os.set_blocking(proc.stdout.fileno(), False)
@@ -121,13 +127,16 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
     return presults
 
 
-def cmd_exec_rc(args, wd=None, timeout=TIMEOUT):
-    presults = cmd_exec(args, wd=wd, check=False, timeout=timeout)
+def cmd_exec_rc(args, wd=None, timeout=TIMEOUT, capture_stderr=True):
+    presults = cmd_exec(args, wd=wd, check=False, timeout=timeout,
+                        capture_stderr=capture_stderr)
     return presults.returncode
 
 
-def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT):
-    presults = cmd_exec(args, wd=wd, shell=shell, check=True, timeout=timeout)
+def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT,
+                     capture_stderr=True):
+    presults = cmd_exec(args, wd=wd, shell=shell, check=True, timeout=timeout,
+                        capture_stderr=capture_stderr)
     if (path):
         # capture output written to path
         with open(path, 'r') as f:
