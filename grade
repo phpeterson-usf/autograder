@@ -54,12 +54,12 @@ def make_student_list(cfg, args):
         mapper = CanvasMapper(cfg.canvas_mapper_cfg)
         students = mapper.get_github_list()
         if not students:
-            fatal(f"Must either 'test' one repo or give a list of students in {Config.path}")
+            fatal(f"Must either 'test' one repo or give a list of students in {Config.get_path()}")
     return students
 
 def main():
-    cfg = Config.from_file()
     args = Args.from_cmdline()
+    cfg = Config.from_path(Config.get_path(args.verbose))
 
     if args.action == 'upload':
         upload_class(cfg, args)

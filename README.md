@@ -105,6 +105,8 @@ You do not need to modify this file unless you need non-default settings
 1. Optional config: If you want to put `config.toml` into another location (perhaps a per-semester directory), you can use the shell environment variable
 `GRADE_CONFIG_DIR` which causes the grade script to look for `config.toml` in the named directory. For example, `~/.bashrc` might contain
 `export GRADE_CONFIG_DIR=~/cs521-s24` or whatever directory is useful to you.
+1. Optional config: If you need more than one config file at a time, you may create a `config.toml` file in any 
+directory under your home directory, and `grade` will prefer that to `~/.config/grade/`
 
 ## Test Cases
 1. Instructors must create their own repo for the test cases for the class projects. Students will clone and pull this repo. We create this repo in the Github Classroom Organization, but that's up to you.
