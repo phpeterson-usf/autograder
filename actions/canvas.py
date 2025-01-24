@@ -45,7 +45,10 @@ class CanvasMapper:
     def get_students(self):
         students = []
         for k,v in self.mapping.items():
-            s = Student(k, v
+            names = v[self.name_col_name].split(',')
+            last = names[0].strip()
+            first = names[1].strip()
+            s = Student(k, first, last)
         for github in self.mapping:
             github_list.append(github)
         return github_list
