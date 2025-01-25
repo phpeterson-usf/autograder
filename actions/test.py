@@ -128,6 +128,8 @@ class ProjectConfig(Config):
         self.subdir = None
         self.timeout = TIMEOUT
         self.capture_stderr = True
+        self.due_date = None
+        self.late_penalty = 0.03
         self.safe_update(cfg)
 
 class Test:
@@ -282,8 +284,11 @@ class Test:
 
 
     # Build and test one repo
-    def test(self, student, repo_path):
+    def test(self, repo):
         tc_results = []
+        repo_path = repo.local
+        student = repo.student
+    
         repo_result = init_repo_result(student)
 
         if not os.path.isdir(repo_path):
@@ -304,13 +309,27 @@ class Test:
         tc_results = self.run_test_cases(repo_path)
         repo_result.update({
             'results': tc_results,
-            'score'  : self.total_score(tc_results),
+            'score'  : self.total_score(tc_results, repo.date),
             'comment': self.make_comment(tc_results)
         })
+
+        self.apply_late_penalty(repo_result, repo.date)
 
         # Print net score for the repo
         print(self.make_earned_avail(tc_results))
         return repo_result
+
+
+    def apply_late_penalty(self, repo_result, repo_date):
+        if self.project_cfg.due_date:
+            # Due date is included in test case [project] section
+            # Both dates are ISO 8601 format so timedelta works
+            delta = repo_date - self.project_config.due_date
+            if delta.days > 0:
+                # Last commit date is later than due date
+                penalty = repo_result['score'] * delta.days * self.project_cfg.late_penalty
+                repo_result['score'] -= penalty
+                repo_result['comment'] += f'\nLate penalty: {penalty}'
 
 
     def total_score(self, results):

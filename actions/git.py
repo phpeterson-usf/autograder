@@ -1,4 +1,4 @@
-import json
+from datetime import date
 import os
 import subprocess
 
@@ -120,3 +120,15 @@ class Git:
             # Exceptions like FileNotFound were reported in test() 
             # Just leave any previous comment untouched
             return comment
+
+    def get_newest_commit_date(self, repo):
+        # TODO: it would be nice to make this work with a dev branch 
+        branch = self.get_default_branch(repo.local)
+        try:
+            cmd = ['git', 'rev-list', '--first-parent', '--date=iso', '-n', '1', '--pretty="%ai"', '--no-commit-header', branch]
+            date_text = cmd_exec_capture(cmd, wd=repo.local)
+        except Exception as ex:
+            print_red(repo.local + ':' + ex, e='\n')
+        if date_text == '':
+            print_red(f'{repo.local}: git rev-list returned nothing. No commits?', e='\n')
+        return date.fromifoformat(date_text)
