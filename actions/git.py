@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import os
 import subprocess
 
@@ -122,13 +122,13 @@ class Git:
             return comment
 
     def get_newest_commit_date(self, repo):
-        # TODO: it would be nice to make this work with a dev branch 
-        branch = self.get_default_branch(repo.local)
+        # TODO: it would be nice to make this work with a dev branch
+        date_text = ''
         try:
+            branch = self.get_default_branch(repo.local)
             cmd = ['git', 'rev-list', '--first-parent', '--date=iso', '-n', '1', '--pretty="%ai"', '--no-commit-header', branch]
             date_text = cmd_exec_capture(cmd, wd=repo.local)
+            date_text = date_text.replace('\"', '')  # remove double quotes which will cause fromisoformat() to fail
         except Exception as ex:
-            print_red(repo.local + ':' + ex, e='\n')
-        if date_text == '':
-            print_red(f'{repo.local}: git rev-list returned nothing. No commits?', e='\n')
-        return date.fromifoformat(date_text)
+            pass
+        return date_text

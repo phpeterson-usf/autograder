@@ -309,7 +309,7 @@ class Test:
         tc_results = self.run_test_cases(repo_path)
         repo_result.update({
             'results': tc_results,
-            'score'  : self.total_score(tc_results, repo.date),
+            'score'  : self.total_score(tc_results),
             'comment': self.make_comment(tc_results)
         })
 
@@ -323,8 +323,8 @@ class Test:
     def apply_late_penalty(self, repo_result, repo_date):
         if self.project_cfg.due_date:
             # Due date is included in test case [project] section
-            # Both dates are ISO 8601 format so timedelta works
-            delta = repo_date - self.project_config.due_date
+            # Use ISO 8601 format for both so timedelta works
+            delta = datetime.fromisoformat(repo_date) - datetime.fromisoformat(self.project_cfg.due_date)
             if delta.days > 0:
                 # Last commit date is later than due date
                 penalty = repo_result['score'] * delta.days * self.project_cfg.late_penalty
