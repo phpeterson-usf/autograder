@@ -66,8 +66,12 @@ def main():
         return 0
 
     tester = Test(cfg.test_cfg, args)
-    git = Git(cfg.git_cfg, args)
-    github = Github(cfg.github_cfg, args, git.cfg.org)
+
+    git = None
+    github = None
+    if args.action != 'test':
+        git = Git(cfg.git_cfg, args)
+        github = Github(cfg.github_cfg, args, git.cfg.org)
 
     # Build list of repos to run, either from '.' or list of students
     repos = []
@@ -94,20 +98,20 @@ def main():
     for repo in repos:
         print_justified(repo.local, longest)
         try:
-            if args.action == 'clone':
+            if args.action == 'clone' and git is not None:
                 git.clone(repo.student)
-            elif args.action == 'pull':
+            elif args.action == 'pull' and git is not None:
                 git.pull(repo.student)
             elif args.action == 'exec':
                 output = cmd_exec_capture(args.exec_cmd, wd=repo.local, shell=True)
                 print(output)
             elif args.action == 'class' or args.action == 'test':
-                if args.github_action:
+                if args.github_action and github is not None:
                     repo_results = github.get_action_results(repo.student)
                     print(repo_results['score'])
                 else:
                     repo_results = tester.test(repo.student, repo.local)
-                if args.action == 'class':
+                if args.action == 'class' and git is not None:
                     repo_results['comment'] = git.get_url_for_hash(repo_results['comment'], repo.student)
                     class_results.append(repo_results)
         except Exception as e:
