@@ -264,23 +264,25 @@ class Test:
 
 
     # Build up the submission comment to send to Canvas
-    def make_comment(self, tc_results):
+    def make_comment(self, repo_result):
         comment = ''
         if (self.build_err):
             comment += f'{self.build_err} '
-        for result in tc_results:
+        for result in repo_result['results']:
             comment += format_pass_fail(result)
             if result.get('test_err'):
                 comment += f" {result['test_err']}"
-        comment += self.make_earned_avail(tc_results)
+        comment += self.make_earned_avail(repo_result)
         return comment
 
 
     # Build a string showing the points earned vs. available for this repo
-    def make_earned_avail(self, tc_results):
-        earned = self.total_score(tc_results)
+    def make_earned_avail(self, repo_result):
         avail = self.total_rubric()
-        return f"{earned}/{avail}"
+        ea = f"{repo_result['score']}/{avail}"
+        if repo_result['late-penalty'] > 0:
+           ea += f" late penalty: {repo_result['late-penalty']}"
+        return ea 
 
 
     # Build and test one repo
@@ -308,15 +310,17 @@ class Test:
         # Run the test cases
         tc_results = self.run_test_cases(repo_path)
         repo_result.update({
-            'results': tc_results,
-            'score'  : self.total_score(tc_results),
-            'comment': self.make_comment(tc_results)
+            'results'     : tc_results,
+            'score'       : self.total_score(tc_results),
+            'late-penalty': 0
         })
-
         self.apply_late_penalty(repo_result, repo.date)
+        # Build the comment after applying any late penalty
+        repo_result['comment'] = self.make_comment(repo_result)
+        
 
         # Print net score for the repo
-        print(self.make_earned_avail(tc_results))
+        print(self.make_earned_avail(repo_result))
         return repo_result
 
 
@@ -327,9 +331,9 @@ class Test:
             delta = datetime.fromisoformat(repo_date) - datetime.fromisoformat(self.project_cfg.due_date)
             if delta.days > 0:
                 # Last commit date is later than due date
-                penalty = repo_result['score'] * delta.days * self.project_cfg.late_penalty
+                penalty = round(repo_result['score'] * delta.days * self.project_cfg.late_penalty)
                 repo_result['score'] -= penalty
-                repo_result['comment'] += f'\nLate penalty: {penalty}'
+                repo_result['late-penalty'] = penalty
 
 
     def total_score(self, results):
@@ -351,11 +355,11 @@ class Test:
         # Points available
         avail = self.total_rubric()
         # Sort class results by score, high to low
-        class_results.sort(key=lambda x: self.total_score(x['results']), reverse=True)
+        class_results.sort(key=lambda repo_result: repo_result['score'], reverse=True)
         freqs = {}  # key: score, value: frequency
         for r in class_results:
             # Get score for one repo
-            score = self.total_score(r['results'])
+            score = r['score']
             if not score in freqs:
                 freqs[score] = 0
             freqs[score] += 1
