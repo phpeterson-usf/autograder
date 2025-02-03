@@ -43,12 +43,14 @@ class Git:
 
     def get_default_branch(self, local):
         branches = subprocess.Popen(
-            ['git', 'branch', '--remotes', '--list', '*/HEAD'],
+            ['git', 'remote', 'show', 'origin'],
+            # ['git', 'branch', '--remotes', '--list', '*/HEAD'],
             stdout=subprocess.PIPE,
             cwd=local
         )
         cut = subprocess.Popen(
-            ['cut', '-d/', '-f3'],
+            ['sed', '-n',  '/HEAD branch/s/.*: //p'],
+            # ['cut', '-d/', '-f3'],
             stdin=branches.stdout,
             stdout=subprocess.PIPE,
         )
@@ -126,9 +128,11 @@ class Git:
         date_text = ''
         try:
             branch = self.get_default_branch(repo.local)
-            cmd = ['git', 'rev-list', '--first-parent', '--date=iso', '-n', '1', '--pretty="%ai"', '--no-commit-header', branch]
+            cmd = ['git', 'rev-list', '--first-parent', '--date=iso', '-n', '1', 
+            '--pretty="%ai"', '--no-commit-header', branch]
             date_text = cmd_exec_capture(cmd, wd=repo.local)
-            date_text = date_text.replace('\"', '')  # remove double quotes which will cause fromisoformat() to fail
+            # remove double quotes which will cause fromisoformat() to fail
+            date_text = date_text.replace('\"', '')
         except Exception as ex:
-            pass
+            print('get_newest_commit_date threw ', ex)
         return date_text

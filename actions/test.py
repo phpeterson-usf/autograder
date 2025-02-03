@@ -1,3 +1,4 @@
+from datetime import datetime as dt
 import difflib
 import os
 from subprocess import CalledProcessError, TimeoutExpired
@@ -226,6 +227,8 @@ class Test:
         except OutputLimitExceeded:
             friendly_str = 'Program produced too much output (infinite loop?)'
             tb_str = traceback.format_exc()
+        except OSError as e:
+            friendly_str = 'OSError: ' + str(e)
 
         if (friendly_str):
             # Only if there was a failure. That way finding "test_err" in
@@ -328,10 +331,12 @@ class Test:
         if self.project_cfg.due_date:
             # Due date is included in test case [project] section
             # Use ISO 8601 format for both so timedelta works
-            delta = datetime.fromisoformat(repo_date) - datetime.fromisoformat(self.project_cfg.due_date)
+            delta = dt.fromisoformat(repo_date) - dt.fromisoformat(self.project_cfg.due_date)
             if delta.days > 0:
                 # Last commit date is later than due date
-                penalty = round(repo_result['score'] * delta.days * self.project_cfg.late_penalty)
+                # Calc penalty to two decimal places like Canvas
+                penalty = round(repo_result['score'] * delta.days * 
+                    self.project_cfg.late_penalty, 2)
                 repo_result['score'] -= penalty
                 repo_result['late-penalty'] = penalty
 
