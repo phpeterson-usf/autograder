@@ -1,5 +1,6 @@
 from datetime import datetime as dt
 import difflib
+import json
 import os
 from subprocess import CalledProcessError, TimeoutExpired
 import traceback
@@ -50,6 +51,8 @@ class TestCase:
                 param = i.replace('$project', self.args.project)
             elif '$digital' in i:
                 param = i.replace('$digital', digital_path)
+            elif '$name' in i:
+                param = i.replace('$name', self.tc_cfg.name)
             else:
                 param = i
             self.cmd_line.append(param)
@@ -58,6 +61,22 @@ class TestCase:
     def init_expected(self, project_tests_path):
         # the expected output can refer to $project_tests by pathname
         self.tc_cfg.expected = self.tc_cfg.expected.replace('$project_tests', project_tests_path)
+
+
+    def get_actual_go(self, jlines):
+        act = ''
+        for jline in jlines.split('\n'):
+            d = json.loads(jline)
+            a = d.get('Action')
+            # if we encounter "Action":"pass" declare victory
+            if a and a == 'pass':
+                return a
+            # collect "Output" values so we have them for the failure case
+            # use one string to mimic what we would get from stdout
+            o = d.get('Output')
+            if o:
+                act += o
+        return act
 
 
     def get_actual(self, local):
@@ -75,6 +94,8 @@ class TestCase:
     
         if self.project_cfg.strip_output:
             act = act.replace(self.project_cfg.strip_output, '')
+        if self.project_cfg.build == 'go':
+            act = self.get_actual_go(act)
         return act
 
     def prepare_cmd_line(self, cmd_line):
@@ -186,6 +207,9 @@ class Test:
                 else:
                     if cmd_exec_rc(['make', '-C', repo_path], timeout=30) != 0:
                         build_err = 'Program did not make successfully'
+        elif b == 'go':
+            if cmd_exec_rc(['go', 'build']) != 0:
+                build_error = 'go build failed'
         else:
             fatal(f'Unknown build plan: \"{b}\"')
 
