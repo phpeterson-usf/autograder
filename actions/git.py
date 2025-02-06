@@ -129,8 +129,8 @@ class Git:
         try:
             branch = self.get_default_branch(repo.local)
             cmd = ['git', 'rev-list', '--first-parent', '--date=iso', '-n', '1', 
-            '--pretty="%ai"', '--no-commit-header', branch]
-            date_text = cmd_exec_capture(cmd, wd=repo.local)
+            '--pretty="%ai"', '--no-commit-header', branch, ]
+            date_text = cmd_exec_capture(cmd, wd=repo.local, capture_stderr=False)
             # remove double quotes which will cause fromisoformat() to fail
             date_text = date_text.replace('\"', '')
         except Exception as ex:

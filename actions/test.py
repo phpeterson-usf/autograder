@@ -352,7 +352,7 @@ class Test:
 
 
     def apply_late_penalty(self, repo_result, repo_date):
-        if self.project_cfg.due_date:
+        if self.project_cfg.due_date and repo_date:
             # Due date is included in test case [project] section
             # Use ISO 8601 format for both so timedelta works
             delta = dt.fromisoformat(repo_date) - dt.fromisoformat(self.project_cfg.due_date)
