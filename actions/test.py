@@ -75,6 +75,9 @@ class TestCase:
             # use one string to mimic what we would get from stdout
             o = d.get('Output')
             if o:
+                if 'warning: no tests to run' in o:
+                    # this is unfortunate. "no tests to run" generates a "pass"
+                    return o
                 act += o
         return act
 
