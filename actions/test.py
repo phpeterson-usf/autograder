@@ -359,11 +359,13 @@ class Test:
             # Due date is included in test case [project] section
             # Use ISO 8601 format for both so timedelta works
             delta = dt.fromisoformat(repo_date) - dt.fromisoformat(self.project_cfg.due_date)
-            if delta.days > 0:
+            if delta.days >= 0:
                 # Last commit date is later than due date
                 # Calc penalty to two decimal places like Canvas
                 penalty = round(repo_result['score'] * delta.days * 
                     self.project_cfg.late_penalty, 2)
+                # delta has whole days and a fraction of a day so += 1
+                penalty += 1
                 repo_result['score'] -= penalty
                 repo_result['late-penalty'] = penalty
 
