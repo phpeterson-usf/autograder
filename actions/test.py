@@ -361,11 +361,13 @@ class Test:
             delta = dt.fromisoformat(repo_date) - dt.fromisoformat(self.project_cfg.due_date)
             if delta.days >= 0:
                 # Last commit date is later than due date
+
+                # delta has whole days and a fraction of a day so + 1
+                days_late = delta.days + 1
+
                 # Calc penalty to two decimal places like Canvas
-                penalty = round(repo_result['score'] * delta.days * 
+                penalty = round(repo_result['score'] * days_late * 
                     self.project_cfg.late_penalty, 2)
-                # delta has whole days and a fraction of a day so += 1
-                penalty += 1
                 repo_result['score'] -= penalty
                 repo_result['late-penalty'] = penalty
 
