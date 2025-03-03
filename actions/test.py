@@ -66,8 +66,12 @@ class TestCase:
     def get_actual_go(self, jlines):
         act = ''
         for jline in jlines.split('\n'):
-            d = json.loads(jline)
-            a = d.get('Action')
+            try:
+                d = json.loads(jline)
+                a = d.get('Action')
+            except Exception as e:
+                print_red('Failed to deserialize json: ' + jline)
+                a = None
             # if we encounter "Action":"pass" declare victory
             if a and a == 'pass':
                 return a
