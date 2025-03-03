@@ -68,10 +68,12 @@ class TestCase:
         for jline in jlines.split('\n'):
             try:
                 d = json.loads(jline)
-                a = d.get('Action')
             except Exception as e:
-                print_red('Failed to deserialize json: ' + jline)
-                a = None
+                # for build failures, include the compiler output as actual
+                act += jline + '\n'
+                # skip to the next line
+                continue
+            a = d.get('Action')
             # if we encounter "Action":"pass" declare victory
             if a and a == 'pass':
                 return a
