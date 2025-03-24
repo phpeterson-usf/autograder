@@ -1,0 +1,14 @@
+[project]
+name = "autograder"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "certifi==2022.6.15",
+    "charset-normalizer==2.1.0",
+    "idna==3.3",
+    "requests==2.28.1",
+    "tomlkit==0.11.1",
+    "urllib3==1.26.11",
+]
