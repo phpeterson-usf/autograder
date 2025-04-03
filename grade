@@ -1,4 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#    "certifi", 
+#    "charset-normalizer", 
+#    "idna", 
+#    "requests", 
+#    "tomlkit",
+#    "urllib3"
+# ]
+# ///
 
 import json
 import os
@@ -13,6 +24,7 @@ from actions.config import Args, Config
 from actions.git import Git
 from actions.github import Github
 from actions.test import Test
+from actions.setup import setup
 
 class Repo:
     def __init__(self, project, **kwargs):
@@ -64,6 +76,9 @@ def main():
 
     if args.action == 'upload':
         upload_class(cfg, args)
+        return 0
+    elif args.action == 'setup':
+        setup()
         return 0
 
     tester = Test(cfg.test_cfg, args)

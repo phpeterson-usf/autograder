@@ -20,7 +20,7 @@ class Args:
     def from_cmdline():
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=[
-            'class', 'clone', 'exec', 'pull', 'test', 'upload'
+            'class', 'clone', 'exec', 'pull', 'test', 'upload', 'setup'
         ])
         p.add_argument('-d', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
             default=None)
