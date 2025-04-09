@@ -66,6 +66,8 @@ class TestCase:
     def get_actual_go(self, jlines):
         act = ''
         for jline in jlines.split('\n'):
+            if self.args.very_verbose:
+                print(jline)
             try:
                 d = json.loads(jline)
             except Exception as e:
