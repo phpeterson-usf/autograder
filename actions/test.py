@@ -161,8 +161,6 @@ class ProjectConfig(Config):
         self.subdir = None
         self.timeout = TIMEOUT
         self.capture_stderr = True
-        self.due_date = None
-        self.late_penalty = 0.03
         self.safe_update(cfg)
 
 class Test:
@@ -318,8 +316,6 @@ class Test:
     def make_earned_avail(self, repo_result):
         avail = self.total_rubric()
         ea = f"{repo_result['score']}/{avail}"
-        if repo_result['late-penalty'] > 0:
-           ea += f" late penalty: {repo_result['late-penalty']}"
         return ea 
 
 
@@ -350,34 +346,14 @@ class Test:
         repo_result.update({
             'results'     : tc_results,
             'score'       : self.total_score(tc_results),
-            'late-penalty': 0
         })
-        self.apply_late_penalty(repo_result, repo.date)
-        # Build the comment after applying any late penalty
+        # Build the comment which will be visible in Canvas
         repo_result['comment'] = self.make_comment(repo_result)
         
 
         # Print net score for the repo
         print(self.make_earned_avail(repo_result))
         return repo_result
-
-
-    def apply_late_penalty(self, repo_result, repo_date):
-        if self.project_cfg.due_date and repo_date:
-            # Due date is included in test case [project] section
-            # Use ISO 8601 format for both so timedelta works
-            delta = dt.fromisoformat(repo_date) - dt.fromisoformat(self.project_cfg.due_date)
-            if delta.days >= 0:
-                # Last commit date is later than due date
-
-                # delta has whole days and a fraction of a day so + 1
-                days_late = delta.days + 1
-
-                # Calc penalty to two decimal places like Canvas
-                penalty = round(repo_result['score'] * days_late * 
-                    self.project_cfg.late_penalty, 2)
-                repo_result['score'] -= penalty
-                repo_result['late-penalty'] = penalty
 
 
     def total_score(self, results):

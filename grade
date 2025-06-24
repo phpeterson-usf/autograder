@@ -25,7 +25,6 @@ class Repo:
         if kwargs.get('subdir'):
             self.local = os.path.join(self.local, kwargs.get('subdir'))
         self.label = self.local.split('/')[-1]
-        self.date = None
 
 
 # Reconstitute 'grade class' results from previously-saved file
@@ -107,8 +106,6 @@ def main():
                     repo_results = github.get_action_results(repo.student)
                     print(repo_results['score'])
                 else:
-                    # Get the date to check for late penalty
-                    repo.date = git.get_newest_commit_date(repo)
                     repo_results = tester.test(repo)
                 if args.action == 'class':
                     repo_results['comment'] = git.get_url_for_hash(repo_results['comment'], repo.student)
