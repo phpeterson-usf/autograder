@@ -4,7 +4,7 @@ from pathlib import Path
 from actions.util import *
 from actions.server import Server
 
-class CanvasMapperConfig(Config):
+class CanvasMapperConfig(SafeConfig):
     def __init__(self, cfg):
         self.map_path = 'your CSV mapping file here'
         self.github_col_name = 'GitHub'
@@ -48,7 +48,7 @@ class CanvasMapper:
         return github_list
 
 
-class CanvasConfig(Config):
+class CanvasConfig(SafeConfig):
     def __init__(self, cfg):
         self.host_name = 'usfca.test.instructure.com or canvas.instructure.com'
         self.access_token = 'your access token here'

@@ -8,7 +8,7 @@ import tomlkit
 class OutputLimitExceeded(Exception):
     pass
 
-class Config(object):
+class SafeConfig(object):
     def safe_update(self, src):
         # Only copy values from src when the key is in dest
         # Prevents namespace pollution from TOML config files

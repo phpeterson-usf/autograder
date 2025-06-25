@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import pprint
 import tomlkit
 
 from actions.test import TestConfig
@@ -45,7 +44,7 @@ class Args:
         return json.loads(json.dumps(d), object_hook=Args)
 
 
-class ConfigConfig(Config):
+class ConfigConfig(SafeConfig):
     def __init__(self, cfg):
         self.students = []
         self.safe_update(cfg)

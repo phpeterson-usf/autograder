@@ -12,7 +12,7 @@ class GitNoBranches(Exception):
 class GitNoRepo(Exception):
     pass
 
-class GitConfig(Config):
+class GitConfig(SafeConfig):
     def __init__(self, cfg):
         self.org = 'your GitHub Classroom org here'
         self.credentials = 'ssh'

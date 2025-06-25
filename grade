@@ -10,6 +10,7 @@ from actions.util import *
 
 from actions.canvas import Canvas, CanvasMapper
 from actions.config import Args, Config
+from actions.dates import Dates
 from actions.git import Git
 from actions.github import Github
 from actions.test import Test
@@ -66,6 +67,8 @@ def main():
         return 0
 
     tester = Test(cfg.test_cfg, args)
+    dates = Dates.from_path(tester.tests_path, args)
+
     git = Git(cfg.git_cfg, args)
     github = Github(cfg.github_cfg, args, git.cfg.org)
 

@@ -10,7 +10,7 @@ from actions.server import Server
 
 from actions.util import *
 
-class GithubConfig(Config):
+class GithubConfig(SafeConfig):
     def __init__(self, cfg):
         self.host_name = 'api.github.com'
         self.access_token = 'your access token here'

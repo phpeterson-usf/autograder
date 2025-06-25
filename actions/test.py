@@ -11,7 +11,7 @@ from actions.github import *
 
 # One test case out of the list in the TOML test case file
 
-class TestCaseConfig(Config):
+class TestCaseConfig(SafeConfig):
     def __init__(self, cfg):
         self.case_sensitive = False
         self.expected = None
@@ -147,14 +147,14 @@ class TestCase:
         return act == exp
 
 
-class TestConfig(Config):
+class TestConfig(SafeConfig):
     def __init__(self, cfg):
         self.tests_path = '~/tests'
         self.digital_path = '~/Digital/Digital.jar' # TODO how does this connect with [Digital]?
         self.safe_update(cfg)
 
 
-class ProjectConfig(Config):
+class ProjectConfig(SafeConfig):
     def __init__(self, cfg):
         self.build = 'make'
         self.strip_output = None
