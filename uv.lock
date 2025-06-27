@@ -11,6 +11,7 @@ dependencies = [
     { name = "charset-normalizer" },
     { name = "idna" },
     { name = "requests" },
+    { name = "simple-term-menu" },
     { name = "tomlkit" },
     { name = "urllib3" },
 ]
@@ -21,6 +22,7 @@ requires-dist = [
     { name = "charset-normalizer", specifier = "==2.1.0" },
     { name = "idna", specifier = "==3.3" },
     { name = "requests", specifier = "==2.28.1" },
+    { name = "simple-term-menu", specifier = ">=1.6.6" },
     { name = "tomlkit", specifier = "==0.11.1" },
     { name = "urllib3", specifier = "==1.26.11" },
 ]
@@ -65,6 +67,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a5/61/a867851fd5ab77277495a8709ddda0861b28163c4613b011bc00228cc724/requests-2.28.1.tar.gz", hash = "sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983", size = 109805 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/91/6d9b8ccacd0412c08820f72cebaa4f0c0441b5cda699c90f618b6f8a1b42/requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349", size = 62843 },
+]
+
+[[package]]
+name = "simple-term-menu"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/80/f0f10b4045628645a841d3d98b584a8699005ee03a211fc7c45f6c6f0e99/simple_term_menu-1.6.6.tar.gz", hash = "sha256:9813d36f5749d62d200a5599b1ec88469c71378312adc084c00c00bfbb383893", size = 35493 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/09/21d993e394c1fe5c44cd90453d88ed44932da8dfca006e424c072d77d29b/simple_term_menu-1.6.6-py3-none-any.whl", hash = "sha256:c2a869efa7a9f7e4a9c25858b42ca6974034951c137d5e281f5339b06ed8c9c2", size = 27600 },
 ]
 
 [[package]]

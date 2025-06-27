@@ -20,17 +20,14 @@ class GitConfig(SafeConfig):
 
 
 class Git:
-    def __init__(self, git_cfg, args):
+    def __init__(self, git_cfg, args, date):
         self.cfg = GitConfig(git_cfg)
         self.args = args
+        self.date = date
 
 
-    def make_local(self, student):
-        return make_repo_path(self.args.project, student)
-
-
-    def make_remote(self, student):
-        repo_path = make_repo_path(self.args.project, student)
+    def make_remote_path(self, repo):
+        repo_path = repo.remote_path
         cred = self.cfg.credentials
         org = self.cfg.org
         if cred == 'ssh':
@@ -63,8 +60,8 @@ class Git:
 
     def get_commit_hash(self, local, branch):
         # append time if not provided on the command line
-        time = '' if ' ' in self.args.date else ' 00:00:00'
-        deadline = '\'' + self.args.date + time + '\''
+        time = '' if ' ' in self.date.date else ' 00:00:00'
+        deadline = '\'' + self.date.date + time + '\''
         cmd = ['git', 'rev-list', '-n', '1', '--first-parent', 
             "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
         lines =  cmd_exec_capture(cmd, wd=local)
@@ -79,9 +76,9 @@ class Git:
         return h
 
 
-    def clone(self, student):
-        remote = self.make_remote(student)
-        local = self.make_local(student)
+    def clone(self, repo):
+        remote = self.make_remote_path(repo)
+        local = repo.local_path
         if os.path.isdir(local):
             print('Already exists: ' + local)
             return 0
@@ -89,7 +86,7 @@ class Git:
             rc = cmd_exec_rc(['git', 'clone', remote, local])
             if rc != 0:
                 raise GitNoRepo
-            if self.args.date:
+            if self.args.by_date:
                 branch = self.get_default_branch(local)
                 commit_hash = self.get_commit_hash(local, branch)
                 cmd_exec_rc(['git', 'checkout', commit_hash], wd=local)
@@ -103,20 +100,20 @@ class Git:
         print()
 
 
-    def pull(self, student):
-        local = self.make_local(student)
+    def pull(self, repo):
+        local = repo.local_path
         branch = self.get_default_branch(local)
         cmd_exec_rc(['git', 'checkout', branch], wd=local)
         cmd_exec_rc(['git', 'pull'], wd=local)
 
 
-    def get_url_for_hash(self, comment, student):
-        local = self.make_local(student)
-        repo_path = make_repo_path(self.args.project, student)
+    def get_url_for_hash(self, comment, repo):
+        local = repo.local_path
+        remote = repo.remote_path
         try:
             cmd = ['git', 'rev-parse', '--short', 'HEAD']
             commit_hash = cmd_exec_capture(cmd, wd=local)
-            url = f'https://github.com/{self.cfg.org}/{repo_path}/tree/{commit_hash}'
+            url = f'https://github.com/{self.cfg.org}/{remote}/tree/{commit_hash}'
             return f'Test results for repo as of this commit: {url}\n\n' + comment
         except Exception as err:
             # Exceptions like FileNotFound were reported in test() 
@@ -127,10 +124,11 @@ class Git:
         # TODO: it would be nice to make this work with a dev branch
         date_text = ''
         try:
-            branch = self.get_default_branch(repo.local)
+            local = repo.local_path
+            branch = self.get_default_branch(local)
             cmd = ['git', 'rev-list', '--first-parent', '--date=iso', '-n', '1', 
             '--pretty="%ai"', '--no-commit-header', branch, ]
-            date_text = cmd_exec_capture(cmd, wd=repo.local, capture_stderr=False)
+            date_text = cmd_exec_capture(cmd, wd=local, capture_stderr=False)
             # remove double quotes which will cause fromisoformat() to fail
             date_text = date_text.replace('\"', '')
         except Exception as ex:

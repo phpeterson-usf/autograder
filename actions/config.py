@@ -21,8 +21,8 @@ class Args:
         p.add_argument('action', type=str, choices=[
             'class', 'clone', 'exec', 'pull', 'test', 'upload'
         ])
-        p.add_argument('-d', '--date', help='Checkout repo as of YYYY-MM-DD at 00:00:00',
-            default=None)
+        p.add_argument('-d', '--by_date', action='store_true', help='Select date from dates.toml',
+            default=False)
         p.add_argument('-e', '--exec_cmd', help='Command to execute in each repo',
             default=None)
         p.add_argument('-g', '--github-action', action='store_true', help='test by downloading Github Action result',

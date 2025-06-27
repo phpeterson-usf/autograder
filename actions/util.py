@@ -80,10 +80,6 @@ def load_toml(path):
         fatal(f'Failed to parse {path}: ' + str(e))
 
 
-def make_repo_path(project, student):
-    return f'{project}-{student}'
-
-
 def project_from_cwd(cwd):
     # if the current directory is named like a given project (project-username),
     # use that as the project name

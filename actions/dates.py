@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from actions.util import SafeConfig, load_toml, fatal
+from simple_term_menu import TerminalMenu
 
 """
 Example file format:
@@ -8,23 +9,27 @@ Example file format:
 [project04]
 
 [[project04.dates]]
+suffix = "due date"
 date = "2025-03-18"
 percentage = 1.0
 
 [[project04.dates]]
+suffix = "one week late"
 date = "2025-03-25"
 percentage = 0.5
 
 """
 class Date(SafeConfig):
     """
-    Date is an element of the Dates list, containing the due date and partial
-    credit percentage for one delivery date
+    Date is an element of the Dates list, containing the name, due date, 
+    and partial credit percentage for one delivery date
     """
     def __init__(self, cfg):
+        self.suffix = ''
         self.date = 'YYYY-MM-DD'
         self.percentage = 0.0
         self.safe_update(cfg)
+        self.suffix.replace(' ', '-')   # a little extra safety for dir name
 
 
 class Dates:
@@ -40,9 +45,19 @@ class Dates:
                 print(date)
             self.dates.append(Date(date))
     
+    def select_date(self):
+        options = [d.suffix + ' ' + d.date for d in self.dates]
+        terminal_menu = TerminalMenu(options)
+        idx = terminal_menu.show()
+        return self.dates[idx]
+
     @staticmethod
     def from_path(tests_path, args):
-        # The due dates are expressed in tests/dates.toml, not in the test cases file
+        """
+        from_path() loads the TOML content of the dates.toml file. Due dates 
+        were previously given in the test case TOML file, but now are split
+        into a separate file which changes every semester
+        """
         dates_path = Path(tests_path) / 'dates.toml'
         try:
             table = load_toml(dates_path)

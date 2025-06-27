@@ -322,7 +322,7 @@ class Test:
     # Build and test one repo
     def test(self, repo):
         tc_results = []
-        repo_path = repo.local
+        repo_path = repo.local_path
         student = repo.student
     
         repo_result = init_repo_result(student)
