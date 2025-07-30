@@ -2,8 +2,8 @@ from datetime import datetime
 import os
 import subprocess
 
-from actions.cmd import cmd_exec_capture, cmd_exec_rc
-from actions.util import *
+from .cmd import cmd_exec_capture, cmd_exec_rc
+from .util import *
 
 class GitNoCommits(Exception):
     pass

@@ -5,10 +5,10 @@ github.py uses the GitHub REST API to get the result of a GitHub action workflow
 from io import BytesIO
 from zipfile import ZipFile
 
-from actions.git import *
-from actions.server import Server
+from .git import *
+from .server import Server
 
-from actions.util import *
+from .util import *
 
 class GithubConfig(SafeConfig):
     def __init__(self, cfg):

@@ -4,17 +4,17 @@ import json
 import os
 import traceback
 
-from actions.cmd import *
-from actions.util import *
+from .actions.cmd import *
+from .actions.util import *
 
-from actions.canvas import CanvasMapper
-from actions.config import Args, Config
-from actions.dates import Dates
-from actions.git import Git
-from actions.github import Github
-from actions.test import Test
-from actions.upload import upload_class
-from actions.rollup import rollup
+from .actions.canvas import CanvasMapper
+from .actions.config import Args, Config
+from .actions.dates import Dates
+from .actions.git import Git
+from .actions.github import Github
+from .actions.test import Test
+from .actions.upload import upload_class
+from .actions.rollup import rollup
 
 class Repo:
     def __init__(self, project, **kwargs):

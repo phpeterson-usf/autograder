@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-from actions.util import OutputLimitExceeded
+from .util import OutputLimitExceeded
 
 # default command timeout in seconds
 TIMEOUT = 60
