@@ -5,11 +5,11 @@ from pathlib import Path
 import pprint
 import tomlkit
 
-from actions.test import TestConfig
-from actions.canvas import CanvasConfig, CanvasMapperConfig
-from actions.git import GitConfig
-from actions.github import GithubConfig
-from actions.util import *
+from .test import TestConfig
+from .canvas import CanvasConfig, CanvasMapperConfig
+from .git import GitConfig
+from .github import GithubConfig
+from .util import *
 
 
 class Args:

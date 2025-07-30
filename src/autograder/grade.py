@@ -5,14 +5,14 @@ import os
 from pathlib import Path
 import traceback
 
-from actions.cmd import *
-from actions.util import *
+from .actions.cmd import *
+from .actions.util import *
 
-from actions.canvas import Canvas, CanvasMapper
-from actions.config import Args, Config
-from actions.git import Git
-from actions.github import Github
-from actions.test import Test
+from .actions.canvas import Canvas, CanvasMapper
+from .actions.config import Args, Config
+from .actions.git import Git
+from .actions.github import Github
+from .actions.test import Test
 
 class Repo:
     def __init__(self, project, **kwargs):
