@@ -5,9 +5,9 @@ import os
 from subprocess import CalledProcessError, TimeoutExpired
 import traceback
 
-from actions.cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
-from actions.util import *
-from actions.github import *
+from .cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
+from .util import *
+from .github import *
 
 # One test case out of the list in the TOML test case file
 

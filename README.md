@@ -8,21 +8,43 @@
 1. Automated upload of results to [Canvas](https://www.instructure.com/)
 
 ## Requirements
-1. Requires python3 and pip3
-    ```sh
-    $ sudo apt install python3-pip
-    ```
+
+### [uv](https://docs.astral.sh/uv/)
+
+- Cargo
+
+```sh
+$ cargo install --git https://github.com/astral-sh/uv uv
+```
+
+- Homebrew
+
+``` sh
+$ brew install uv
+```
+
+- Nix
+
+On NixOS:
+
+```sh
+$ nix-env -iA nixos.uv
+```
+
+On Non NixOS:
+
+```sh
+$ # without flakes:
+nix-env -iA nixpkgs.uv
+# with flakes:
+nix profile install nixpkgs#uv
+```
 
 ## Installation
 1. Clone the `autograder` repo
     ```sh
     $ cd ~
     $ git clone git@github.com:/phpeterson-usf/autograder.git
-    $ cd autograder
-    ```
-1. Install python modules (mainly `tomlkit` and `requests`)
-    ```sh
-    $ pip3 install -r requirements.txt
     ```
 1. Edit `~/.bash_profile` (on Linux or Git Bash on Windows) or `~/.zshrc` (on macOS) to include the path to `grade`
     ```

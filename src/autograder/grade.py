@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+
+import json
+import os
+from pathlib import Path
+import traceback
+
+from .actions.cmd import *
+from .actions.util import *
+
+from .actions.canvas import Canvas, CanvasMapper
+from .actions.config import Args, Config
+from .actions.git import Git
+from .actions.github import Github
+from .actions.test import Test
+
+class Repo:
+    def __init__(self, project, **kwargs):
+        self.student = kwargs.get('student')
+        if self.student:
+            pg = make_repo_path(project, self.student)
+            self.local = os.path.join('.', pg)
+        else:
+            self.local = kwargs.get('local')
+        if kwargs.get('subdir'):
+            self.local = os.path.join(self.local, kwargs.get('subdir'))
+        self.label = self.local.split('/')[-1]
+        self.date = None
+
+
+# Reconstitute 'grade class' results from previously-saved file
+# This allows long-running test cases to be factored out
+# of the upload process, which can also take some time
+def upload_class(cfg, args):
+    path = Path(args.project + '.json')
+    if not path.exists():
+        fatal(f'{path} does not exist. Run "grade class -p {args.project}" first')
+
+    with open(path) as f:
+        data = f.read()
+        class_results = json.loads(data)
+    canvas = Canvas(cfg.canvas_cfg, args)
+    mapper = CanvasMapper(cfg.canvas_mapper_cfg)
+    for result in class_results:
+        # Map GitHub username to Canvas SIS Login ID using imported CSV file
+        login_id = mapper.lookup(result['student'])
+        canvas.add_score(login_id, result['score'], result['comment'])
+    canvas.upload()
+
+def make_student_list(cfg, args):
+    students = args.students  # from command line
+    if not students:          # from config.toml
+        students = cfg.config_cfg.students
+    if not students:          # from CSV file
+        mapper = CanvasMapper(cfg.canvas_mapper_cfg)
+        students = mapper.get_github_list()
+        if not students:
+            fatal(f"Must either 'test' one repo or give a list of students in {Config.get_path()}")
+    return students
+
+def main():
+    args = Args.from_cmdline()
+    cfg = Config.from_path(Config.get_path(args.verbose))
+
+    if args.action == 'upload':
+        upload_class(cfg, args)
+        return 0
+
+    tester = Test(cfg.test_cfg, args)
+    git = Git(cfg.git_cfg, args)
+    github = Github(cfg.github_cfg, args, git.cfg.org)
+
+    # Build list of repos to run, either from '.' or list of students
+    repos = []
+    subdir = tester.project_cfg.subdir
+    if args.action == 'test':
+        repo = Repo(args.project, local='.', subdir=subdir)
+        repos.append(repo)
+    else:
+        # Make repo list from student list
+        for s in make_student_list(cfg, args):
+            repo = Repo(args.project, student=s, subdir=subdir)
+            repos.append(repo)
+
+    # Calc column width for justified printing
+    longest = 0
+    for r in repos:
+        l = len(r.local)
+        if l > longest:
+            longest = l
+    longest += 1
+
+    # Run the specified actions for all of the repos
+    class_results = []
+    for repo in repos:
+        print_justified(repo.local, longest)
+        try:
+            if args.action == 'clone':
+                git.clone(repo.student)
+            elif args.action == 'pull':
+                git.pull(repo.student)
+            elif args.action == 'exec':
+                output = cmd_exec_capture(args.exec_cmd, wd=repo.local, shell=True)
+                print(output)
+            elif args.action == 'class' or args.action == 'test':
+                if args.github_action:
+                    repo_results = github.get_action_results(repo.student)
+                    print(repo_results['score'])
+                else:
+                    # Get the date to check for late penalty
+                    repo.date = git.get_newest_commit_date(repo)
+                    repo_results = tester.test(repo)
+                if args.action == 'class':
+                    repo_results['comment'] = git.get_url_for_hash(repo_results['comment'], repo.student)
+                    class_results.append(repo_results)
+        except Exception as e:
+            print_red(traceback.format_exc(), '\n');
+            continue
+
+    if args.action == 'class':
+        # Summary by score frequency
+        tester.print_histogram(class_results)
+
+        # Write test results out to temp file for later upload
+        class_json = json.dumps(class_results, indent=4, sort_keys=True)
+        with open(args.project + '.json', 'w') as f:
+            f.write(class_json)
+
+
+if __name__ == "__main__":
+    main()
