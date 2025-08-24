@@ -2,28 +2,31 @@
 
 import json
 import os
-from pathlib import Path
 import traceback
 
 from actions.cmd import *
 from actions.util import *
 
-from actions.canvas import Canvas, CanvasMapper
+from actions.canvas import CanvasMapper
 from actions.config import Args, Config
 from actions.dates import Dates
 from actions.git import Git
 from actions.github import Github
 from actions.test import Test
+from actions.upload import upload_class
+from actions.rollup import rollup
 
 class Repo:
     def __init__(self, project, **kwargs):
         self.student = kwargs.get('student')
         date_obj = kwargs.get('date')
         self.suffix = date_obj.suffix if date_obj else ''
-    
         if self.student:
             self.remote_path = f'{project}-{self.student}'
-            self.local_path = f'{self.remote_path}-{self.suffix}'
+            if self.suffix:
+                self.local_path = f'{self.remote_path}-{self.suffix}'
+            else:
+                self.local_path = f'{self.remote_path}'
             self.local_path = os.path.join('.', self.local_path)
         else:
             self.remote_path = None  # shouldn't be used
@@ -32,25 +35,6 @@ class Repo:
             self.local_path = os.path.join(self.local_path, kwargs.get('subdir'))
         self.label = self.local_path.split('/')[-1]
 
-
-# Reconstitute 'grade class' results from previously-saved file
-# This allows long-running test cases to be factored out
-# of the upload process, which can also take some time
-def upload_class(cfg, args):
-    path = Path(args.project + '.json')
-    if not path.exists():
-        fatal(f'{path} does not exist. Run "grade class -p {args.project}" first')
-
-    with open(path) as f:
-        data = f.read()
-        class_results = json.loads(data)
-    canvas = Canvas(cfg.canvas_cfg, args)
-    mapper = CanvasMapper(cfg.canvas_mapper_cfg)
-    for result in class_results:
-        # Map GitHub username to Canvas SIS Login ID using imported CSV file
-        login_id = mapper.lookup(result['student'])
-        canvas.add_score(login_id, result['score'], result['comment'])
-    canvas.upload()
 
 def make_student_list(cfg, args):
     students = args.students  # from command line
@@ -66,17 +50,20 @@ def make_student_list(cfg, args):
 def main():
     args = Args.from_cmdline()
     cfg = Config.from_path(Config.get_path(args.verbose))
-
-    if args.action == 'upload':
-        upload_class(cfg, args)
-        return 0
-
     tester = Test(cfg.test_cfg, args)
 
+    dates = Dates.from_path(tester.tests_path, args)
     date = None
     if args.by_date:
-        dates = Dates.from_path(tester.tests_path, args)
         date = dates.select_date()
+
+    if args.action == 'upload':
+        upload_class(cfg, args, dates)
+        return 0
+
+    if args.action == 'rollup':
+        rollup(cfg, args, dates.dates)
+        return 0
 
     git = Git(cfg.git_cfg, args, date)
     github = Github(cfg.github_cfg, args, git.cfg.org)

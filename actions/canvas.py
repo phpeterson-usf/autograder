@@ -80,7 +80,7 @@ class Canvas(Server):
     def get_submission(self, course_id, assignment_id, student_id):
         url = self.make_submission_url(course_id, assignment_id, student_id)
         obj = self.get_url(url)  # Let any exception propagate
-        return obj['grade']
+        return obj['submission[posted_grade]']
 
 
     # Upload the grade for the specified course/assignment/student
@@ -186,6 +186,10 @@ class Canvas(Server):
             print('Uploading {} {}'.format(s['login_id'], s['score']), end=' ')
             if not 'user_id' in s:
                 print_red('not enrolled', e='\n')
+                continue
+            canvas_score = self.get_submission(course_id, assignment_id, s['user_id'])
+            if canvas_score == s['score']:
+                print(f'skipping: new score == score in Canvas')
                 continue
             ok = self.put_submission(course_id, assignment_id, 
                 s['user_id'], s['score'], s['comment'])

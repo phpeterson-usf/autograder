@@ -55,15 +55,15 @@ class Git:
         if not branch:
             raise GitNoBranches
         return branch
-        
+
 
 
     def get_commit_hash(self, local, branch):
-        # append time if not provided on the command line
+        # append time if not provided in dates.toml
         time = '' if ' ' in self.date.date else ' 00:00:00'
-        deadline = '\'' + self.date.date + time + '\''
+        before = self.date.date + time
         cmd = ['git', 'rev-list', '-n', '1', '--first-parent', 
-            "--pretty='%cd'", 'HEAD', '--date=local','--before', deadline, branch]
+            "--pretty='%cd'", 'HEAD', '--date=local','--before', before, branch]
         lines =  cmd_exec_capture(cmd, wd=local)
         if len(lines) == 0:
             print(' '.join(cmd))
@@ -93,7 +93,7 @@ class Git:
         except GitNoRepo:
             print_red('No remote repo')
         except GitNoCommits:
-            print_red('No commits before deadline. Removing local repo')
+            print_yellow('No commits in date range. Removing local repo')
             cmd_exec_rc(['rm', '-rf', local])
         except GitNoBranches:
             print_red('No branches in repo')

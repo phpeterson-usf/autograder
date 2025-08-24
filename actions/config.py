@@ -19,9 +19,9 @@ class Args:
     def from_cmdline():
         p = argparse.ArgumentParser()
         p.add_argument('action', type=str, choices=[
-            'class', 'clone', 'exec', 'pull', 'test', 'upload'
+            'class', 'clone', 'exec', 'pull', 'rollup', 'test', 'upload'
         ])
-        p.add_argument('-d', '--by_date', action='store_true', help='Select date from dates.toml',
+        p.add_argument('-d', '--by-date', action='store_true', help='Select date from dates.toml',
             default=False)
         p.add_argument('-e', '--exec_cmd', help='Command to execute in each repo',
             default=None)
@@ -39,7 +39,7 @@ class Args:
             default=False)
 
         d = vars(p.parse_args())
-
+        
         # Create the Args object
         return json.loads(json.dumps(d), object_hook=Args)
 

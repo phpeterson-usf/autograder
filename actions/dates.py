@@ -9,16 +9,16 @@ Example file format:
 [project04]
 
 [[project04.dates]]
-suffix = "due date"
-date = "2025-03-18"
+suffix = "due"
+date = "2025-03-11"
 percentage = 1.0
 
 [[project04.dates]]
-suffix = "one week late"
-date = "2025-03-25"
+suffix = "late1wk"
+date = "2025-03-18"
 percentage = 0.5
-
 """
+
 class Date(SafeConfig):
     """
     Date is an element of the Dates list, containing the name, due date, 
@@ -44,7 +44,7 @@ class Dates:
             if self.verbose:
                 print(date)
             self.dates.append(Date(date))
-    
+
     def select_date(self):
         options = [d.suffix + ' ' + d.date for d in self.dates]
         terminal_menu = TerminalMenu(options)
