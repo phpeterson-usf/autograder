@@ -51,19 +51,22 @@ def main():
     args = Args.from_cmdline()
     cfg = Config.from_path(Config.get_path(args.verbose))
     tester = Test(cfg.test_cfg, args)
-
     dates = Dates.from_path(tester.tests_path, args)
-    date = None
-    if args.by_date:
-        date = dates.select_date()
 
     if args.action == 'upload':
-        upload_class(cfg, args, dates)
+        upload_class(cfg, args)
         return 0
 
     if args.action == 'rollup':
         rollup(cfg, args, dates.dates)
         return 0
+
+    date = None
+    if args.by_date:
+        # The clone and class actions will use this date
+        date = dates.select_date()
+        if date is None:
+            return 0
 
     git = Git(cfg.git_cfg, args, date)
     github = Github(cfg.github_cfg, args, git.cfg.org)

@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ from .canvas import Canvas, CanvasMapper
 # Reconstitute 'grade class' results from previously-saved file
 # This allows long-running test cases to be factored out
 # of the upload process, which can also take some time
-def upload_class(cfg, args, dates):
+def upload_class(cfg, args):
     path = Path()
     if args.by_date:
         json_files = glob.glob('*.json')
@@ -19,6 +20,8 @@ def upload_class(cfg, args, dates):
             return
         menu = TerminalMenu(json_files)
         idx = menu.show()
+        if idx is None:
+            return
         path = json_files[idx]
     else:
         path = Path(args.project + '.json')

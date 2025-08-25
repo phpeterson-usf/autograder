@@ -80,7 +80,7 @@ class Canvas(Server):
     def get_submission(self, course_id, assignment_id, student_id):
         url = self.make_submission_url(course_id, assignment_id, student_id)
         obj = self.get_url(url)  # Let any exception propagate
-        return obj['submission[posted_grade]']
+        return obj['score']
 
 
     # Upload the grade for the specified course/assignment/student
