@@ -233,7 +233,6 @@ download that spreadsheet to a local CSV file, you can give the mapping configur
     [Test]
     digital_path = "~/myclass/Digital/Digital.jar"
     ```
-
 ## Using GitHub Actions
 1. If you use GitHub Actions to do the testing, autograder can download the results for each student repo and upload the class results to Canvas
 1. If you use `grade class` with the flag `-g/--github-action`, autograder can use the GitHub REST API to download the results into a JSON file
@@ -249,3 +248,25 @@ download that spreadsheet to a local CSV file, you can give the mapping configur
     [Github]
     access_token = "xxx" # create in your Github settings | Developer Settings | Tokens (classic)  
     ```
+
+## Late Grading (instructors only)
+1. autograder has an algorithm for grading late work: full credit for work done by the due date, for work handed in X days late,
+discount the improvement (new score - old score) by Y%. 
+1. The late milestones are specified in a file called `dates.toml` which lives in your `tests` repo and is formatted like this:
+    ```
+    [project04]
+
+    [[project04.dates]]
+    suffix = "due"
+    date = "2025-03-18"
+    percentage = 1.0
+
+    [[project04.dates]]
+    suffix = "Late1wk"
+    date = "2025-03-25"
+    percentage = 0.5
+    ```
+1. When you `grade clone` or `grade class` you can use the `-d`/`--by-date` flag to choose which milestone  you want to work on
+1. Each invocation of `grade class -d` will generate a JSON score file, e.g. `project04-due.json`
+1. The percentage deduction is done with `grade rollup -d` which applies the deductions and generates `project04-rollup.json`
+1. Use `grade upload -d` to choose the JSON file to upload to Canvas, perhaps always the rolled-up grades.
