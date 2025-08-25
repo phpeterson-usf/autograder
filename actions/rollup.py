@@ -52,14 +52,15 @@ def rollup(cfg, args, dates):
                 # warn(f'No repo for {date.suffix} for student: {student}')
                 continue
             score = scores_by_suffix[date.suffix]['score']
+            comment = f'{date.suffix}: {rolled_score} + ({score} - {rolled_score}) * {date.percentage} = '
             # This is the rollup calculation
             # Use prev score to avoid penalizing a repo which hasn't changed
             if score != prev_score:
                 rolled_score += (score - rolled_score) * date.percentage
-                prev_score = score  
-            print(f'{student}, {date.suffix} raw: {score} adjusted: {rolled_score}')
-            rolled_comment += scores_by_suffix[date.suffix]['comment'] + \
-                f'\n({score} - {rolled_score}) * {date.percentage}\n'
+            comment += f'{rolled_score}'
+            print(f'{student}: {comment}')
+            rolled_comment += scores_by_suffix[date.suffix]['comment'] + '\n\n' + comment + '\n\n' 
+            prev_score = score
         rolled_dict['comment'] = rolled_comment
         rolled_dict['score'] = rolled_score
         rolled_list.append(rolled_dict)

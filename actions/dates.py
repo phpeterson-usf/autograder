@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from actions.util import SafeConfig, load_toml, fatal
-from simple_term_menu import TerminalMenu
 
 """
 Example file format:
@@ -46,9 +45,12 @@ class Dates:
             self.dates.append(Date(date))
 
     def select_date(self):
+        from simple_term_menu import TerminalMenu
         options = [d.suffix + ' ' + d.date for d in self.dates]
         terminal_menu = TerminalMenu(options)
         idx = terminal_menu.show()
+        if idx is None:
+            return None
         return self.dates[idx]
 
     @staticmethod

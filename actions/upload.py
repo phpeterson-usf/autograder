@@ -2,7 +2,6 @@ import glob
 import json
 import os
 from pathlib import Path
-from simple_term_menu import TerminalMenu
 
 from .util import fatal
 from .canvas import Canvas, CanvasMapper
@@ -12,6 +11,8 @@ from .canvas import Canvas, CanvasMapper
 # This allows long-running test cases to be factored out
 # of the upload process, which can also take some time
 def upload_class(cfg, args):
+    from simple_term_menu import TerminalMenu
+
     path = Path()
     if args.by_date:
         json_files = glob.glob('*.json')
