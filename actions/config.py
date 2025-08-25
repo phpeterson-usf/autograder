@@ -70,7 +70,7 @@ class Config:
 
 
     @staticmethod
-    def get_path(verbose):
+    def get_path(verbose=False):
         fname = 'config.toml'
         if os.environ.get('GRADE_CONFIG_DIR'):
             # First choice: config file in dir named by env var
@@ -84,8 +84,12 @@ class Config:
                 if p.exists():
                     found = True
                 else:
+                    # Check if we've reached home directory before moving up
+                    if dirname == Path.home():
+                        break
                     dirname = dirname.parent
-                    if dirname == Path('~').expanduser():
+                    # Also stop if we've reached the root
+                    if dirname == dirname.parent:
                         break
             if not found:
                 # Last choice: config file will be read (and created) in ~/.config
