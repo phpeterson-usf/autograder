@@ -69,7 +69,7 @@ class Config:
 
 
     @staticmethod
-    def get_path(verbose):
+    def get_path():
         fname = 'config.toml'
         if os.environ.get('GRADE_CONFIG_DIR'):
             # First choice: config file in dir named by env var
@@ -83,15 +83,13 @@ class Config:
                 if p.exists():
                     found = True
                 else:
-                    dirname = dirname.parent
-                    if dirname == Path('~').expanduser():
+                    if dirname == Path.home():
                         break
+                    dirname = dirname.parent
             if not found:
                 # Last choice: config file will be read (and created) in ~/.config
                 dirname = Path.home() / '.config' / 'grade'
         path = dirname / fname
-        if verbose:
-            print(f'config file: {path}')
         return path
 
 
@@ -143,6 +141,7 @@ class Config:
                 ('Test', TestConfig({})),
             ]
             Config.write_default_tables(path, tpls)
+            print(f'Created config file: {path}')
 
         # Any config in the TOML file overrides defaults
         doc = load_toml(path)

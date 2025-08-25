@@ -48,8 +48,8 @@ def make_student_list(cfg, args):
     return students
 
 def main():
+    cfg = Config.from_path(Config.get_path())
     args = Args.from_cmdline()
-    cfg = Config.from_path(Config.get_path(args.verbose))
     tester = Test(cfg.test_cfg, args)
     dates = Dates.from_path(tester.tests_path, args)
 
