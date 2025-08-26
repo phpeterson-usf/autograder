@@ -54,7 +54,7 @@ def main():
     
     # Only load dates when needed for specific actions
     dates = None
-    if args.action == 'rollup' or args.by_date or args.action == 'class':
+    if args.by_date:
         dates = Dates.from_path(tester.tests_path, args)
 
     if args.action == 'upload':

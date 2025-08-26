@@ -63,6 +63,8 @@ class Dates:
         dates_path = Path(tests_path) / 'dates.toml'
         try:
             table = load_toml(dates_path)
+            if not table:
+                fatal(f'File not found: {dates_path})')
             project_dates = table[args.project]
             return Dates(project_dates['dates'], args.verbose)
         except FileNotFoundError as fnf:
