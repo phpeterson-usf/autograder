@@ -51,7 +51,11 @@ def main():
     cfg = Config.from_path(Config.get_path())
     args = Args.from_cmdline()
     tester = Test(cfg.test_cfg, args)
-    dates = Dates.from_path(tester.tests_path, args)
+    
+    # Only load dates when needed for specific actions
+    dates = None
+    if args.action == 'rollup' or args.by_date or args.action == 'class':
+        dates = Dates.from_path(tester.tests_path, args)
 
     if args.action == 'upload':
         upload_class(cfg, args)
