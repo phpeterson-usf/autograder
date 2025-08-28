@@ -124,7 +124,13 @@ class TestCase:
         for line in text.split('\n'):
             text_lines.append(line.strip() + '\n')
         return text_lines
-        
+    
+    def console_format(self, input): 
+        test_case = ""
+        for i in range(len(input)):
+            test_case += input[i]
+        return test_case
+    
     def match_expected(self, actual):
         # rstrip to remove extra trailing newline
         exp = self.make_lines(self.tc_cfg.expected.rstrip())
@@ -134,13 +140,13 @@ class TestCase:
         cmd_line_str = ' '.join(cmd_line)
 
         if self.args.very_verbose:
-            print(f"\n\n===[{self.tc_cfg.name}]===expected\n$ {cmd_line_str}\n{exp}")
-            print()
-            print(f"===[{self.tc_cfg.name}]===actual\n$ {cmd_line_str}\n{act}")
+            print(f"\n\n===[{self.tc_cfg.name}]===expected\n$ {cmd_line_str}\n{self.console_format(exp)}")
+            print(f"===[{self.tc_cfg.name}]===actual\n$ {cmd_line_str}\n{self.console_format(act)}")
 
         if self.args.verbose and (act != exp):
             print(f"\n\n===[{self.tc_cfg.name}]===diff\n$ {cmd_line_str}")
             diff = difflib.context_diff(exp, act, fromfile='expected', tofile='actual')
+
             for line in diff:
                 print(line, end='')
 
