@@ -19,3 +19,12 @@ dependencies = [
 
 [project.scripts]
 grade = "autograder.grade:main" # `uv run grade`
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+filterwarnings = [
+    "ignore:cannot collect test class 'Test':pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class 'TestCase':pytest.PytestCollectionWarning",
+]
