@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import traceback
+
+from .actions.cmd import *
+from .actions.util import *
+
+from .actions.canvas import CanvasMapper
+from .actions.config import Args, Config
+from .actions.dates import Dates
+from .actions.git import Git
+from .actions.github import Github
+from .actions.test import Test
+from .actions.upload import upload_class
+from .actions.rollup import rollup
+
+class Repo:
+    def __init__(self, project, **kwargs):
+        self.student = kwargs.get('student')
+        date_obj = kwargs.get('date')
+        self.suffix = date_obj.suffix if date_obj else ''
+        if self.student:
+            self.remote_path = f'{project}-{self.student}'
+            if self.suffix:
+                self.local_path = f'{self.remote_path}-{self.suffix}'
+            else:
+                self.local_path = f'{self.remote_path}'
+            self.local_path = os.path.join('.', self.local_path)
+        else:
+            self.remote_path = None  # shouldn't be used
+            self.local_path = kwargs.get('local')
+        if kwargs.get('subdir'):
+            self.local_path = os.path.join(self.local_path, kwargs.get('subdir'))
+        self.label = self.local_path.split('/')[-1]
+
+
+def make_student_list(cfg, args):
+    students = args.students  # from command line
+    if not students:          # from config.toml
+        students = cfg.config_cfg.students
+    if not students:          # from CSV file
+        mapper = CanvasMapper(cfg.canvas_mapper_cfg)
+        students = mapper.get_github_list()
+        if not students:
+            fatal(f"Must either 'test' one repo or give a list of students in {Config.get_path()}")
+    return students
+
+def main():
+    cfg = Config.from_path(Config.get_path())
+    args = Args.from_cmdline()
+    tester = Test(cfg.test_cfg, args)
+    
+    # Only load dates when needed for specific actions
+    dates = None
+    if args.by_date:
+        dates = Dates.from_path(tester.tests_path, args)
+
+    if args.action == 'upload':
+        upload_class(cfg, args)
+        return 0
+
+    if args.action == 'rollup':
+        rollup(cfg, args, dates.dates)
+        return 0
+
+    date = None
+    if args.by_date:
+        # The clone and class actions will use this date
+        date = dates.select_date()
+        if date is None:
+            return 0
+
+    git = Git(cfg.git_cfg, args, date)
+    github = Github(cfg.github_cfg, args, git.cfg.org)
+
+    # Build list of repos to run, either from '.' or list of students
+    repos = []
+    subdir = tester.project_cfg.subdir
+    if args.action == 'test':
+        repo = Repo(args.project, local='.', subdir=subdir)
+        repos.append(repo)
+    else:
+        # Make repo list from student list
+        for s in make_student_list(cfg, args):
+            repo = Repo(args.project, student=s, subdir=subdir, date=date)
+            repos.append(repo)
+
+    # Calc column width for justified printing
+    longest = 0
+    for r in repos:
+        l = len(r.local_path)
+        if l > longest:
+            longest = l
+    longest += 1
+
+    # Run the specified actions for all of the repos
+    class_results = []
+    for repo in repos:
+        print_justified(repo.local_path, longest)
+        try:
+            if args.action == 'clone':
+                git.clone(repo)
+            elif args.action == 'pull':
+                git.pull(repo)
+            elif args.action == 'exec':
+                output = cmd_exec_capture(args.exec_cmd, wd=repo.local_path, shell=True)
+                print(output)
+            elif args.action == 'class' or args.action == 'test':
+                if args.github_action:
+                    repo_results = github.get_action_results(repo.student)
+                    print(repo_results['score'])
+                else:
+                    repo_results = tester.test(repo)
+                if args.action == 'class':
+                    repo_results['comment'] = git.get_url_for_hash(repo_results['comment'], repo)
+                    class_results.append(repo_results)
+        except Exception as e:
+            print_red(traceback.format_exc(), '\n');
+            continue
+
+    if args.action == 'class':
+        # Summary by score frequency
+        tester.print_histogram(class_results)
+
+        # Serialize results into json
+        class_json = json.dumps(class_results, indent=4, sort_keys=True)
+
+        # Write results to JSON file, including date suffix if specified in cmd line args
+        if date:
+            fname = args.project + '-' + date.suffix + '.json'
+        else:
+            fname = args.project + '.json'
+        with open(fname, 'w') as f:
+            f.write(class_json)
+
+
+if __name__ == "__main__":
+    main()

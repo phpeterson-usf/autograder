@@ -1,8 +1,8 @@
 import csv
 from pathlib import Path
 
-from actions.util import *
-from actions.server import Server
+from .util import *
+from .server import Server
 
 class CanvasMapperConfig(SafeConfig):
     def __init__(self, cfg):
