@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-import actions
-from actions.config import Args, Config
+import autograder.actions as actions
+from autograder.actions.config import Args, Config
 
 
 def test_grade_action_test_end_to_end(tmp_path, monkeypatch):
@@ -21,7 +21,7 @@ def test_grade_action_test_end_to_end(tmp_path, monkeypatch):
         'students': None, 'verbose': False, 'very_verbose': False,
     })
 
-    from actions.config import Config
+    from autograder.actions.config import Config
     # Minimal config doc for components used in grade.py
     cfg_doc = {
         'Canvas': type('X', (), {})(),
@@ -34,22 +34,21 @@ def test_grade_action_test_end_to_end(tmp_path, monkeypatch):
     cfg = Config(cfg_doc)
 
     # Monkeypatch Config.from_path and Args.from_cmdline to supply our objects
-    monkeypatch.setattr('actions.config.Config.from_path', staticmethod(lambda p: cfg))
-    monkeypatch.setattr('actions.config.Config.get_path', staticmethod(lambda: Path('dummy')))
-    monkeypatch.setattr('actions.config.Args.from_cmdline', staticmethod(lambda: args))
+    monkeypatch.setattr('autograder.actions.config.Config.from_path', staticmethod(lambda p: cfg))
+    monkeypatch.setattr('autograder.actions.config.Config.get_path', staticmethod(lambda: Path('dummy')))
+    monkeypatch.setattr('autograder.actions.config.Args.from_cmdline', staticmethod(lambda: args))
 
     # Run main() and assert it prints final score and returns 0
-    import importlib, runpy
-    import actions.cmd as CMD
-    repo_root = Path(__file__).resolve().parents[1]
-    grade_mod = runpy.run_path(str(repo_root / 'grade'))
+    import importlib
+    import autograder.actions.cmd as CMD
+    from autograder import grade as grade_mod
     # Patch print_justified to avoid padding
-    monkeypatch.setattr('actions.util.print_justified', lambda s, n: None)
+    monkeypatch.setattr('autograder.actions.util.print_justified', lambda s, n: None)
     # Ensure CWD is the repo root for action 'test'
     monkeypatch.chdir(repo)
     # Execute main
     # Run without asserting return value (grade.main returns None for 'test')
-    grade_mod['main']()
+    grade_mod.main()
 
 
 def test_grade_action_class_json_and_histogram(tmp_path, monkeypatch, capsys):
@@ -82,19 +81,17 @@ def test_grade_action_class_json_and_histogram(tmp_path, monkeypatch, capsys):
     }
     cfg = Config(cfg_doc)
 
-    monkeypatch.setattr('actions.config.Config.from_path', staticmethod(lambda p: cfg))
-    monkeypatch.setattr('actions.config.Config.get_path', staticmethod(lambda: Path('dummy')))
-    monkeypatch.setattr('actions.config.Args.from_cmdline', staticmethod(lambda: args))
-    monkeypatch.setattr('actions.test.Test', FakeTest)
+    monkeypatch.setattr('autograder.actions.config.Config.from_path', staticmethod(lambda p: cfg))
+    monkeypatch.setattr('autograder.actions.config.Config.get_path', staticmethod(lambda: Path('dummy')))
+    monkeypatch.setattr('autograder.actions.config.Args.from_cmdline', staticmethod(lambda: args))
+    monkeypatch.setattr('autograder.actions.test.Test', FakeTest)
     monkeypatch.chdir(tmp_path)
 
-    import runpy
-    repo_root = Path(__file__).resolve().parents[1]
-    grade_mod = runpy.run_path(str(repo_root / 'grade'))
+    from autograder import grade as grade_mod
     # Avoid padded printing
-    monkeypatch.setattr('actions.util.print_justified', lambda s, n: None)
+    monkeypatch.setattr('autograder.actions.util.print_justified', lambda s, n: None)
     # Run without asserting return value (grade.main returns None for 'class')
-    grade_mod['main']()
+    grade_mod.main()
     # Verify JSON file exists
     data = json.loads((tmp_path / f'{project}.json').read_text())
     assert {r['student'] for r in data} == {'alice', 'bob'}

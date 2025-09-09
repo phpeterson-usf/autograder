@@ -2,8 +2,8 @@ from pathlib import Path
 import os
 import pytest
 
-from actions.config import Args
-from actions.test import Test, TestCase
+from autograder.actions.config import Args
+from autograder.actions.test import Test, TestCase
 from tests.helpers import write_mini_repo, write_tests_repo
 
 
@@ -29,7 +29,7 @@ def test_test_runner_end_to_end(tmp_path, monkeypatch):
     args = make_args(project)
 
     # Point Test to our synthetic tests repo
-    from actions.test import TestConfig
+    from autograder.actions.test import TestConfig
     tcfg = TestConfig({'tests_path': str(tests_repo)})
     tester = Test(tcfg.__dict__, args)
 
@@ -50,7 +50,7 @@ def test_test_runner_end_to_end(tmp_path, monkeypatch):
 
 
 def test_testcase_substitutions_and_match(tmp_path):
-    from actions.test import ProjectConfig
+    from autograder.actions.test import ProjectConfig
     project_cfg = ProjectConfig({'build': 'none'})
     args = make_args('projx')
     tc_cfg = {

@@ -5,7 +5,7 @@ import textwrap
 import types
 import pytest
 
-from actions import util as U
+from autograder.actions import util as U
 
 
 def test_project_from_cwd_parses_with_suffix(tmp_path):

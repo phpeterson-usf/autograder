@@ -2,8 +2,8 @@ import json
 import sys
 from pathlib import Path
 
-from actions.dates import Dates
-from actions.rollup import rollup
+from autograder.actions.dates import Dates
+from autograder.actions.rollup import rollup
 
 
 def write_dates_toml(base: Path, project: str):

@@ -1,7 +1,7 @@
 import sys
 import pytest
 
-from actions import cmd as CMD
+from autograder.actions import cmd as CMD
 
 
 def py_cmd(*lines):

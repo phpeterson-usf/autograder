@@ -5,9 +5,9 @@ from io import BytesIO
 
 import pytest
 
-from actions.git import Git, GitConfig, GitNoBranches, GitNoCommits
-from actions.github import Github
-from actions.server import Server
+from autograder.actions.git import Git, GitConfig, GitNoBranches, GitNoCommits
+from autograder.actions.github import Github
+from autograder.actions.server import Server
 
 
 class DummyArgs(SimpleNamespace):
@@ -55,7 +55,7 @@ def test_git_get_default_branch_and_no_branches(monkeypatch, tmp_path):
 
 def test_git_get_commit_hash(monkeypatch, tmp_path):
     cfg = GitConfig({'org': 'o', 'credentials': 'ssh'})
-    from actions.git import datetime
+    from autograder.actions.git import datetime
     args = DummyArgs()
     # Provide a date object with .date string and .suffix
     class D: date = '2024-10-01'; suffix = 'D1'
@@ -64,13 +64,13 @@ def test_git_get_commit_hash(monkeypatch, tmp_path):
     def fake_capture(cmd, wd=None):
         return "commit abcdef0\n2024-09-30 14:00:00"
 
-    monkeypatch.setattr('actions.git.cmd_exec_capture', fake_capture)
+    monkeypatch.setattr('autograder.actions.git.cmd_exec_capture', fake_capture)
     h = g.get_commit_hash(str(tmp_path), 'main')
     assert h == 'abcdef0'
 
     def fake_empty(cmd, wd=None):
         return ""
-    monkeypatch.setattr('actions.git.cmd_exec_capture', fake_empty)
+    monkeypatch.setattr('autograder.actions.git.cmd_exec_capture', fake_empty)
     with pytest.raises(GitNoCommits):
         g.get_commit_hash(str(tmp_path), 'main')
 
@@ -139,9 +139,9 @@ def test_github_artifacts_and_results(monkeypatch):
         raise AssertionError(f"unexpected url {url}")
 
     # Patch Server.get_url for Github methods
-    monkeypatch.setattr('actions.server.Server.get_url', lambda self, url, headers={}: fake_get_url(url, headers))
+    monkeypatch.setattr('autograder.actions.server.Server.get_url', lambda self, url, headers={}: fake_get_url(url, headers))
 
-    from actions.github import GithubConfig
+    from autograder.actions.github import GithubConfig
     args = DummyArgs(project='p', verbose=False)
     gh = Github(GithubConfig({'host_name':'api.github.com','access_token':'tok'}).__dict__, args, org='orgx')
     # First artifact

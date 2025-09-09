@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from actions.config import Config, Args
+from autograder.actions.config import Config, Args
 
 
 def test_config_get_path_env_overrides(tmp_path, monkeypatch):
