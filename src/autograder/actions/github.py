@@ -2,6 +2,7 @@
 github.py uses the GitHub REST API to get the result of a GitHub action workflow
 """
 
+import json
 from io import BytesIO
 from zipfile import ZipFile
 
