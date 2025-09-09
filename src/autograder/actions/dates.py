@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from actions.util import SafeConfig, load_toml, fatal
+from .util import SafeConfig, load_toml, fatal
 
 """
 Example file format:

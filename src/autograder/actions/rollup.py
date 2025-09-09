@@ -7,7 +7,7 @@ the late penalty to each repo for each date milestone
 import json
 from pathlib import Path
 import pprint
-from actions.util import warn, fatal
+from .util import warn, fatal
 
 def rollup(cfg, args, dates):
     # Load up the scores from each "grade class" run

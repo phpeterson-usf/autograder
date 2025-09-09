@@ -8,7 +8,7 @@ import requests
 import urllib.error
 from urllib.error import HTTPError, URLError
 
-from actions.util import *
+from .util import *
 
 class Server:
     def __init__(self, host_name, token, verbose):
