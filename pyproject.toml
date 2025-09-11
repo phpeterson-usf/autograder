@@ -11,7 +11,7 @@ dependencies = [
     "idna",
     "pep8",
     "pylint",
-    "pytest>=8.4.2",
+    "pytest",
     "requests",
     "simple-term-menu",
     "tomlkit",
