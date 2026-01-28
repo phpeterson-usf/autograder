@@ -7,53 +7,14 @@
 1. Integration with the [Digital](https://github.com/hneemann/Digital) circuit simulation tool
 1. Automated upload of results to [Canvas](https://www.instructure.com/)
 
-## Requirements
-
-### [uv](https://docs.astral.sh/uv/)
-
-- Cargo
-
-```sh
-$ cargo install --git https://github.com/astral-sh/uv uv
-```
-
-- Homebrew
-
-``` sh
-$ brew install uv
-```
-
-- Nix
-
-On NixOS:
-
-```sh
-$ nix-env -iA nixos.uv
-```
-
-On Non NixOS:
-
-```sh
-$ # without flakes:
-nix-env -iA nixpkgs.uv
-# with flakes:
-nix profile install nixpkgs#uv
-```
-
 ## Installation
-1. Clone the `autograder` repo
-    ```sh
-    $ cd ~
-    $ git clone git@github.com:/phpeterson-usf/autograder.git
+1. Autograder can be installed using the [uv](https://docs.astral.sh/uv/) package manager. uv is pre-installed on USF lab systems. If you need to install uv on your personal machine, follow [these instructions](https://docs.astral.sh/uv/getting-started/installation/)
+
+1. Use `uv` to install the autograder package
     ```
-1. Edit `~/.bash_profile` (on Linux or Git Bash on Windows) or `~/.zshrc` (on macOS) to include the path to `grade`
+    uv tool install git+https://github.com/phpeterson-usf/autograder
     ```
-    export PATH=~/autograder:$PATH
-    ```
-1. Use the `source` command on that file to update your environment 
-    ```sh
-    $ source ~/.zshrc
-    ```
+
 1. Clone your class's tests repo. Use the right one for your class - these are just examples.
     ```
     $ cd ~
@@ -61,32 +22,6 @@ nix profile install nixpkgs#uv
     $ git clone git@github.com:/USF-CS631-S21/tests.git
     ``` 
 
-## Python Virtual Environments (optional)
-Since some python installations are locked down, and you can't use `pip3 install`, you can use a virtual environment in one of two ways
-
-### Python venv [[reference]](https://docs.python.org/3.14/library/venv.html)
-```sh
-cd autograder
-python3 -m venv .venv
-source .venv/bin/activate
-pip3 install -r requirements.txt
-```
-
-### Use `uv` [[reference]](https://docs.astral.sh/uv/)
-uv is a fast and convenient wrapper around python virtual environments
-1. [Install uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer). uv installs to `~/.local`
-1. In your `~/.bashrc` (or `~/.zshrc` on MacOS)
-    ```
-    export PATH=~/.local/bin:$PATH
-    source ~/autograder/.venv/bin/activate
-    ```
-1. Create the environment based on my `pyproject.toml` file
-    ```sh
-    cd autograder
-    uv sync
-    ```
-
----
 ## Usage for Students
 1. You can test a project in the current directory like this
     ```
@@ -110,7 +45,6 @@ You do not need to modify this file unless you need non-default settings
         tests_path = "~/myclass/tests"  # default is "~/tests"
         ```
     
----
 ## Usage for Instructors
 1. Add your Github Classroom organization and a list of students to `~/.config/grade/config.toml`
     ```
@@ -218,7 +152,7 @@ substituted for `$testspath/$project/`. In this example, substitution gives the 
 
 ## Command Line Parameters
 1. `grade` supports these command-line parameters
-* `-d/--date` is the date to use for grade clone
+* `-d/--date` to choose the date milestone (see dates.toml below)
 * `-e/--exec` provide commands to execute (e.g. `git pull; make clean`)
 * `-g/--github-action` tells `grade class` to get the test result from `api.github.com` rather than local testing
 * `-n/--name` with `grade test` runs one named test case, rather than all of them
