@@ -51,3 +51,55 @@ def test_safeconfig_unknown_key_exits(monkeypatch):
     with pytest.raises(SystemExit):
         C({"a": 2, "b": 3})
 
+
+class _TypedConfig(U.SafeConfig):
+    """Helper for the type-check tests below. Each field has a default
+    chosen to exercise one of the comparisons inside _toml_types_compatible."""
+
+    def __init__(self, cfg):
+        self.s = "default"
+        self.i = 1
+        self.b = False
+        self.lst = []
+        self.nullable = None
+        self.safe_update(cfg)
+
+
+@pytest.mark.parametrize("key,value", [
+    ("s", "other string"),
+    ("i", 42),
+    ("b", True),
+    ("lst", [1, 2, 3]),
+    ("nullable", "anything"),        # None default accepts any type
+    ("nullable", 99),
+    ("nullable", [1, 2]),
+    ("nullable", True),
+])
+def test_safeconfig_compatible_types_accepted(key, value):
+    cfg = _TypedConfig({key: value})
+    assert getattr(cfg, key) == value
+
+
+@pytest.mark.parametrize("key,value", [
+    ("s", True),                     # bool for str (the user's actual bug)
+    ("s", 1),                        # int for str
+    ("s", []),                       # list for str
+    ("i", True),                     # bool for int — strict separation
+    ("i", "10"),                     # str for int
+    ("b", 1),                        # int for bool — strict separation
+    ("b", "true"),                   # str for bool
+    ("lst", "not a list"),           # str for list
+])
+def test_safeconfig_mismatched_types_rejected(key, value):
+    with pytest.raises(SystemExit):
+        _TypedConfig({key: value})
+
+
+def test_safeconfig_tomlkit_string_subclass_accepted():
+    """tomlkit.items.String is a str subclass; isinstance check should
+    accept it for a str-defaulted field."""
+    import tomlkit
+    doc = tomlkit.parse('s = "from-toml"\n')
+    cfg = _TypedConfig({"s": doc["s"]})
+    assert cfg.s == "from-toml"
+

@@ -49,6 +49,41 @@ def test_test_runner_end_to_end(tmp_path, monkeypatch):
     assert tester.total_rubric() == 10
 
 
+def test_build_invokes_make_with_wd_not_dash_C(tmp_path, monkeypatch):
+    """Regression test: previously build() ran ['make', '-C', repo_path],
+    which inside a container (workdir /work, /work bind-mounted from the
+    abspath of repo_path) caused make to look for a non-existent
+    subdirectory. The fix is to pass wd=repo_path and drop -C; this test
+    pins that contract so it doesn't regress."""
+    project = "projx"
+    repo = write_mini_repo(tmp_path, program_name=project)
+    tests_repo = write_tests_repo(tmp_path, project=project)
+
+    args = make_args(project)
+
+    from autograder.actions.test import TestConfig
+    tcfg = TestConfig({'tests_path': str(tests_repo)})
+    tester = Test(tcfg.__dict__, args)
+
+    calls = []
+
+    def fake_cmd_exec_rc(args, wd=None, **kwargs):
+        calls.append((list(args), wd, kwargs))
+        return 0
+
+    monkeypatch.setattr(
+        'autograder.actions.test.cmd_exec_rc', fake_cmd_exec_rc
+    )
+
+    assert tester.build(str(repo)) is None
+
+    assert len(calls) == 1, f"expected exactly one cmd_exec_rc call, got {calls}"
+    args_list, wd, _ = calls[0]
+    assert args_list == ['make']
+    assert wd == str(repo)
+    assert '-C' not in args_list
+
+
 def test_testcase_substitutions_and_match(tmp_path):
     from autograder.actions.test import ProjectConfig
     project_cfg = ProjectConfig({'build': 'none'})
