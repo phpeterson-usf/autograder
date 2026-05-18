@@ -15,6 +15,7 @@ any other build state survive across test cases within the same repo.
 
 import atexit
 import os
+import re
 import subprocess
 
 from .util import SafeConfig, fatal
@@ -77,6 +78,10 @@ class Container:
         self.tag = f"autograder-{image}:latest"
         self._built = False
         self._container_id = None
+        # Pick up `FROM --platform=...` from the Dockerfile so cross-arch
+        # images (e.g. the RISC-V image on an Apple Silicon host) get the
+        # right --platform flag on both `docker build` and `docker run`.
+        self._platform = self._read_platform()
 
     @staticmethod
     def _resolve_dockerfiles_path(configured):
@@ -96,6 +101,22 @@ class Container:
         fatal("containers/ directory not found; set [Container] dockerfiles_path "
               "in config.toml to point at the autograder repo's containers/ dir")
 
+    def _read_platform(self):
+        """Return the --platform=... value from the Dockerfile's first FROM
+        line, or None if not specified. Caches nothing; called once from
+        __init__."""
+        df = os.path.join(self.dockerfiles_path, self.image, "Dockerfile")
+        try:
+            with open(df) as f:
+                for line in f:
+                    if not re.match(r"\s*FROM\s", line):
+                        continue
+                    m = re.match(r"\s*FROM\s+--platform=(\S+)", line)
+                    return m.group(1) if m else None
+        except OSError:
+            pass
+        return None
+
     def _ensure_built(self):
         if self._built:
             return
@@ -108,9 +129,11 @@ class Container:
             if not os.path.isdir(ctx):
                 fatal(f"No Dockerfile dir for image '{self.image}' at {ctx}")
             print(f"Building container image {self.tag} from {ctx} ...")
-            rc = subprocess.run(
-                [self.engine, "build", "-t", self.tag, ctx]
-            ).returncode
+            build_cmd = [self.engine, "build", "-t", self.tag]
+            if self._platform:
+                build_cmd += [f"--platform={self._platform}"]
+            build_cmd += [ctx]
+            rc = subprocess.run(build_cmd).returncode
             if rc != 0:
                 fatal(f"Failed to build {self.tag}")
         self._built = True
@@ -142,6 +165,8 @@ class Container:
             "-v", f"{self.project_tests_path}:{self.TESTS_DIR}:ro",
             "--workdir", self.WORK_DIR,
         ]
+        if self._platform:
+            cmd += [f"--platform={self._platform}"]
         if not self.network:
             cmd += ["--network=none"]
         if self.digital_path and os.path.exists(self.digital_path):
