@@ -50,7 +50,7 @@ def make_student_list(cfg, args):
 def main():
     cfg = Config.from_path(Config.get_path())
     args = Args.from_cmdline()
-    tester = Test(cfg.test_cfg, args)
+    tester = Test(cfg.test_cfg, args, container_cfg=cfg.container_cfg)
     
     # Only load dates when needed for specific actions
     dates = None

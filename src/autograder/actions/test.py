@@ -6,6 +6,7 @@ from subprocess import CalledProcessError, TimeoutExpired
 import traceback
 
 from .cmd import cmd_exec_capture, cmd_exec_rc, TIMEOUT
+from .container import Container, ContainerConfig
 from .util import *
 from .github import *
 
@@ -90,18 +91,20 @@ class TestCase:
         return act
 
 
-    def get_actual(self, local):
+    def get_actual(self, local, container=None):
         timeout = self.project_cfg.timeout
         capture_stderr = self.project_cfg.capture_stderr
         if self.tc_cfg.output == 'stdout':
             # get actual output from stdout
-            act = cmd_exec_capture(self.cmd_line, local, timeout=timeout, 
-                                   capture_stderr=capture_stderr)
+            act = cmd_exec_capture(self.cmd_line, local, timeout=timeout,
+                                   capture_stderr=capture_stderr,
+                                   container=container)
         else:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.tc_cfg.output)
             act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout,
-                                   capture_stderr=capture_stderr)
+                                   capture_stderr=capture_stderr,
+                                   container=container)
     
         if self.project_cfg.strip_output:
             act = act.replace(self.project_cfg.strip_output, '')
@@ -157,6 +160,7 @@ class TestConfig(SafeConfig):
 class ProjectConfig(SafeConfig):
     def __init__(self, cfg):
         self.build = 'make'
+        self.container = ''  # name of container image; ignored unless [Container] enabled
         self.strip_output = None
         self.subdir = None
         self.timeout = TIMEOUT
@@ -165,14 +169,31 @@ class ProjectConfig(SafeConfig):
 
 class Test:
 
-    def __init__(self, test_cfg, args):
-        self.test_cfg = TestConfig(test_cfg)    
+    def __init__(self, test_cfg, args, container_cfg=None):
+        self.test_cfg = TestConfig(test_cfg)
         self.args = args
+        self.container_cfg = ContainerConfig(container_cfg or {})
         self.tests_path = os.path.expanduser(self.test_cfg.tests_path)
         self.digital_path = os.path.expanduser(self.test_cfg.digital_path)
+        self.project_tests_path = os.path.join(self.tests_path, self.args.project)
         self.test_cases = []
         self.load_test_cases()
         self.build_err = ''
+        if self.container_cfg.enabled and not self.project_cfg.container:
+            fatal(f"[Container] enabled but [project].container is missing in "
+                  f"{self.args.project}.toml")
+
+    def make_container(self, repo_path):
+        if not self.container_cfg.enabled:
+            return None
+        return Container(
+            image=self.project_cfg.container,
+            repo_path=repo_path,
+            project_tests_path=self.project_tests_path,
+            digital_path=self.digital_path,
+            engine=self.container_cfg.engine,
+            dockerfiles_path=self.container_cfg.dockerfiles_path,
+        )
 
     def load_test_cases(self):
         # Load <project>.toml
@@ -200,7 +221,7 @@ class Test:
             self.test_cases.append(tc)
 
 
-    def build(self, repo_path):
+    def build(self, repo_path, container=None):
         build_err = None
         b = self.project_cfg.build
         if b == 'none':
@@ -214,11 +235,12 @@ class Test:
                 if not os.path.isfile(mfu_path) and not os.path.isfile(mfl_path):
                     build_err = f'Makefile not found: {mfu_path}'
                 else:
-                    if cmd_exec_rc(['make', '-C', repo_path], timeout=30) != 0:
+                    if cmd_exec_rc(['make', '-C', repo_path], timeout=30,
+                                   container=container) != 0:
                         build_err = 'Program did not make successfully'
         elif b == 'go':
-            if cmd_exec_rc(['go', 'build']) != 0:
-                build_error = 'go build failed'
+            if cmd_exec_rc(['go', 'build'], wd=repo_path, container=container) != 0:
+                build_err = 'go build failed'
         else:
             fatal(f'Unknown build plan: \"{b}\"')
 
@@ -226,7 +248,7 @@ class Test:
             print_red(build_err, '')
         return build_err
 
-    def run_one_test(self, repo_path, test_case):
+    def run_one_test(self, repo_path, test_case, container=None):
         '''
         Manage exceptions here so we can
         1. print them out in a friendly way
@@ -238,7 +260,7 @@ class Test:
         friendly_str = ''
         tb_str = ''
         try:
-            actual = test_case.get_actual(repo_path)
+            actual = test_case.get_actual(repo_path, container=container)
             if test_case.match_expected(actual):
                 # Test case passed, accumulate score
                 result['score'] = test_case.tc_cfg.rubric
@@ -287,15 +309,15 @@ class Test:
         return result
 
 
-    def run_test_cases(self, repo_path):
+    def run_test_cases(self, repo_path, container=None):
         results = []
         if self.args.test_name is not None:
             for tc in self.test_cases:
                 if tc.tc_cfg.name == self.args.test_name:
-                    results.append(self.run_one_test(repo_path, tc))
+                    results.append(self.run_one_test(repo_path, tc, container=container))
         else:
             for tc in self.test_cases:
-                results.append(self.run_one_test(repo_path, tc))
+                results.append(self.run_one_test(repo_path, tc, container=container))
         return results
 
 
@@ -333,7 +355,8 @@ class Test:
             print_red(err, e='\n')
             return repo_result
 
-        self.build_err = self.build(repo_path)
+        container = self.make_container(repo_path)
+        self.build_err = self.build(repo_path, container=container)
         if self.build_err:
             # Only if an error occurred. That way you can search
             # the <project>.json file for 'build_err' and find only real errors
@@ -342,7 +365,7 @@ class Test:
             })
 
         # Run the test cases
-        tc_results = self.run_test_cases(repo_path)
+        tc_results = self.run_test_cases(repo_path, container=container)
         repo_result.update({
             'results'     : tc_results,
             'score'       : self.total_score(tc_results),

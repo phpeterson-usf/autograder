@@ -6,6 +6,7 @@ import tomlkit
 
 from .test import TestConfig
 from .canvas import CanvasConfig, CanvasMapperConfig
+from .container import ContainerConfig
 from .git import GitConfig
 from .github import GithubConfig
 from .util import *
@@ -62,6 +63,7 @@ class Config:
     def __init__(self, doc):
         self.canvas_cfg = doc['Canvas']
         self.canvas_mapper_cfg = doc['CanvasMapper']
+        self.container_cfg = doc.get('Container', {})
         self.git_cfg = doc['Git']
         self.github_cfg = doc['Github']
         self.test_cfg = doc['Test']
@@ -101,12 +103,13 @@ class Config:
         for k,v in d.items():
             if type(v) == str:
                 line = f'{k} = "{v}"'
+            elif type(v) == bool:
+                line = f'{k} = {"true" if v else "false"}'
             elif type(v) == int:
                 line = f'{k} = {v}'
             elif type(v) == list and not v:
                 line = f'{k} = []'
             else:
-                # If we need booleans, handle python True vs TOML true
                 raise TypeError(f'Not handled: {type(v)} for key: {k}')
             tbl.add(tomlkit.comment(line))
 
@@ -136,6 +139,7 @@ class Config:
                 ('Canvas', CanvasConfig({})),
                 ('CanvasMapper', CanvasMapperConfig({})),
                 ('Config', ConfigConfig({})),
+                ('Container', ContainerConfig({})),
                 ('Git', GitConfig({})),
                 ('Github', GithubConfig({})),
                 ('Test', TestConfig({})),

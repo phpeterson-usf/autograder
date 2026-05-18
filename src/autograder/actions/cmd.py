@@ -46,15 +46,15 @@ def cmd_cleanup():
 
 
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
-             output_limit=OUTPUT_LIMIT, capture_stderr=True):
+             output_limit=OUTPUT_LIMIT, capture_stderr=True, container=None):
     presults = ProcResults(0, None, None)
 
     global global_cleanup_registered
     global global_cleanup_gpid
 
-    # Only register cmd_cleanup() once 
+    # Only register cmd_cleanup() once
     if not global_cleanup_registered:
-        global_cleanup_registered = True    
+        global_cleanup_registered = True
         atexit.register(cmd_cleanup)
 
     # stderr
@@ -62,9 +62,17 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
         stderr=subprocess.STDOUT
     else:
         stderr=subprocess.DEVNULL
-    
+
+    # If a Container is provided, rewrite args into a `docker run ...` argv
+    # and run that on the host. The container's WORKDIR is the bind-mounted
+    # repo, so the host cwd no longer matters.
+    if container is not None:
+        args = container.wrap(args)
+        wd = None
+        shell = False
+
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=stderr, 
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=stderr,
                              start_new_session=True, cwd=wd, shell=shell)
 
         #os.set_blocking(proc.stdout.fileno(), False)
@@ -127,16 +135,16 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
     return presults
 
 
-def cmd_exec_rc(args, wd=None, timeout=TIMEOUT, capture_stderr=True):
+def cmd_exec_rc(args, wd=None, timeout=TIMEOUT, capture_stderr=True, container=None):
     presults = cmd_exec(args, wd=wd, check=False, timeout=timeout,
-                        capture_stderr=capture_stderr)
+                        capture_stderr=capture_stderr, container=container)
     return presults.returncode
 
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT,
-                     capture_stderr=True):
+                     capture_stderr=True, container=None):
     presults = cmd_exec(args, wd=wd, shell=shell, check=True, timeout=timeout,
-                        capture_stderr=capture_stderr)
+                        capture_stderr=capture_stderr, container=container)
     if (path):
         # capture output written to path
         with open(path, 'r') as f:
