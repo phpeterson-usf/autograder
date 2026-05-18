@@ -360,27 +360,32 @@ class Test:
             return repo_result
 
         container = self.make_container(repo_path)
-        self.build_err = self.build(repo_path, container=container)
-        if self.build_err:
-            # Only if an error occurred. That way you can search
-            # the <project>.json file for 'build_err' and find only real errors
+        if container is not None:
+            container.start()
+        try:
+            self.build_err = self.build(repo_path, container=container)
+            if self.build_err:
+                # Only if an error occurred. That way you can search
+                # the <project>.json file for 'build_err' and find only real errors
+                repo_result.update({
+                    'build_err': self.build_err
+                })
+
+            # Run the test cases
+            tc_results = self.run_test_cases(repo_path, container=container)
             repo_result.update({
-                'build_err': self.build_err
+                'results'     : tc_results,
+                'score'       : self.total_score(tc_results),
             })
+            # Build the comment which will be visible in Canvas
+            repo_result['comment'] = self.make_comment(repo_result)
 
-        # Run the test cases
-        tc_results = self.run_test_cases(repo_path, container=container)
-        repo_result.update({
-            'results'     : tc_results,
-            'score'       : self.total_score(tc_results),
-        })
-        # Build the comment which will be visible in Canvas
-        repo_result['comment'] = self.make_comment(repo_result)
-        
-
-        # Print net score for the repo
-        print(self.make_earned_avail(repo_result))
-        return repo_result
+            # Print net score for the repo
+            print(self.make_earned_avail(repo_result))
+            return repo_result
+        finally:
+            if container is not None:
+                container.close()
 
 
     def total_score(self, results):

@@ -2,15 +2,43 @@
 Container isolation for student code execution.
 
 When enabled via [Container] in config.toml, every call routed through
-cmd_exec runs inside a throwaway Docker container with no network, bounded
-resources, and only the repo (rw), the project's tests dir (ro), and
-Digital.jar (ro, for the Java image) bind-mounted in.
+cmd_exec runs inside a Docker container with bounded resources and only
+the repo (rw), the project's tests dir (ro), and Digital.jar (ro, for
+the Java image) bind-mounted in.
+
+One container is kept alive per repo: Test.test() calls start() before
+the build / test cases and close() after them. Each cmd_exec call
+inside that window goes through `docker exec`, which is ~100ms instead
+of the 3-4s of a fresh `docker run`. The Go module cache, GOCACHE, and
+any other build state survive across test cases within the same repo.
 """
 
+import atexit
 import os
 import subprocess
 
 from .util import SafeConfig, fatal
+
+
+# Module-level registry of long-lived containers, so an interpreter exit
+# (Ctrl-C, exception escape from Test.test) does not leak running
+# containers. Each entry is (container_id, engine).
+_active_containers = []
+
+
+def _cleanup_active_containers():
+    while _active_containers:
+        cid, engine = _active_containers.pop()
+        try:
+            subprocess.run(
+                [engine, "stop", "-t", "1", cid],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+
+atexit.register(_cleanup_active_containers)
 
 
 class ContainerConfig(SafeConfig):
@@ -23,8 +51,15 @@ class ContainerConfig(SafeConfig):
 
 
 class Container:
-    """Per-repo container handle: builds the image on demand and wraps an
-    argv list into a `docker run` invocation with the right mounts."""
+    """Per-repo container handle. Lifecycle:
+
+        c = Container(...)
+        c.start()                       # docker run -d ... sleep infinity
+        argv = c.wrap(['make', '-C', repo_path])
+        # → ['docker', 'exec', <id>, 'make', '-C', '/work']
+        ...
+        c.close()                       # docker stop <id>
+    """
 
     WORK_DIR = "/work"
     TESTS_DIR = "/tests"
@@ -41,6 +76,7 @@ class Container:
         self.network = network
         self.tag = f"autograder-{image}:latest"
         self._built = False
+        self._container_id = None
 
     @staticmethod
     def _resolve_dockerfiles_path(configured):
@@ -93,13 +129,13 @@ class Container:
             s = s.replace(host, ctr)
         return s
 
-    def wrap(self, args):
-        """Return the full `docker run ...` argv that executes `args` inside
-        the container."""
+    def start(self):
+        """Start a long-lived container for this repo. Idempotent."""
+        if self._container_id is not None:
+            return
         self._ensure_built()
-        translated = [self._translate(a) for a in args]
         cmd = [
-            self.engine, "run", "--rm", "--init",
+            self.engine, "run", "-d", "--rm", "--init",
             "--memory=512m", "--pids-limit=128", "--cpus=1",
             "--user", f"{os.getuid()}:{os.getgid()}",
             "-v", f"{self.repo_path}:{self.WORK_DIR}",
@@ -110,5 +146,36 @@ class Container:
             cmd += ["--network=none"]
         if self.digital_path and os.path.exists(self.digital_path):
             cmd += ["-v", f"{self.digital_path}:{self.DIGITAL_PATH}:ro"]
-        cmd += [self.tag, *translated]
-        return cmd
+        cmd += [self.tag, "sleep", "infinity"]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            fatal(f"Failed to start container ({self.tag}): "
+                  f"{result.stderr.strip()}")
+        self._container_id = result.stdout.strip()
+        _active_containers.append((self._container_id, self.engine))
+
+    def close(self):
+        """Stop the long-lived container. Idempotent. The --rm flag means
+        docker removes it automatically once stopped."""
+        if self._container_id is None:
+            return
+        cid = self._container_id
+        self._container_id = None
+        try:
+            _active_containers.remove((cid, self.engine))
+        except ValueError:
+            pass
+        subprocess.run(
+            [self.engine, "stop", "-t", "1", cid],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+
+    def wrap(self, args):
+        """Return a `docker exec ...` argv that runs `args` inside the
+        already-started container, with host paths translated to their
+        container-side equivalents."""
+        if self._container_id is None:
+            fatal("Container.wrap() called before start()")
+        translated = [self._translate(a) for a in args]
+        return [self.engine, "exec", self._container_id, *translated]

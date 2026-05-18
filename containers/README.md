@@ -16,18 +16,20 @@ Containerizing these calls confines a malicious or accidentally destructive stud
 
 All three dangerous calls funnel through one function: `cmd_exec` in `src/autograder/actions/cmd.py`. The container layer lives entirely inside `cmd_exec`. Callers in `test.py`, `git.py`, etc. do not change. The test TOML format does not change.
 
+One container is kept alive per repo: `Test.test()` starts a detached container (`docker run -d ... sleep infinity`) before the build and test cases, and stops it afterwards. Each intervening `cmd_exec` runs `docker exec` against that container — ~100ms per call instead of the 3–4s of a fresh `docker run` on macOS, and any state populated by an earlier call (Go module cache, GOCACHE, object files) is reused by later test cases.
+
 ```
 cmd_exec(args, wd=...)
     │
     ├── containers disabled → subprocess.Popen(args, cwd=wd)
     │
     └── containers enabled  → subprocess.Popen(
-                                 ["docker", "run", ...flags..., image,
+                                 ["docker", "exec", <repo_container_id>,
                                   *args_translated],
                                  cwd=None)
 ```
 
-When containers are enabled, `wd` becomes a bind-mount and any host paths in `args` (e.g. `$project_tests/...`, `$digital`) are translated to their container-side equivalents.
+`wd` is materialised once at container start as the bind-mounted `/work`; any host paths in `args` (e.g. `$project_tests/...`, `$digital`) are translated to their container-side equivalents on every call.
 
 ## Modes
 
@@ -103,13 +105,15 @@ Nothing under the instructor's `~` is mounted other than the explicit paths abov
 
 ## Runtime policy
 
-Every `docker run` includes:
+The per-repo `docker run -d` that starts the container sets:
 
-- `--rm` — fresh container per command; no cross-student state.
+- `--rm` — when stopped, the container is removed; no cross-student state.
 - `--network=none` — applied unless `[Container] network = true`. Closes outbound exfiltration; enable when student code legitimately needs a trusted endpoint (e.g. `proxy.golang.org` for Go module fetches).
-- `--init` — proper PID 1 so SIGTERM on timeout propagates cleanly.
-- `--memory=512m --pids=128 --cpus=1` — caps fork bombs and runaway memory. Tunable per project via future `[project]` fields if a course needs more.
-- `--read-only` on `/`, with `/work` writable via the bind-mount. Student `make` writes object files into `/work` (visible on host); nothing else on disk persists.
+- `--init` — proper PID 1 (tini) so SIGTERM on stop or timeout propagates cleanly and zombie children are reaped.
+- `--memory=512m --pids-limit=128 --cpus=1` — caps fork bombs and runaway memory. Apply to all processes in the container for its entire lifetime.
+- `--user $(id -u):$(id -g)` — runs as the host UID so files written into `/work` are owned by the instructor, not root.
+
+A module-level `atexit` handler stops any still-running containers if the autograder exits abnormally (Ctrl-C, uncaught exception), so leaked containers do not accumulate.
 
 ## Non-goals
 
