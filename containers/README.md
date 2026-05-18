@@ -115,6 +115,16 @@ The per-repo `docker run -d` that starts the container sets:
 
 A module-level `atexit` handler stops any still-running containers if the autograder exits abnormally (Ctrl-C, uncaught exception), so leaked containers do not accumulate.
 
+## Windows / WSL
+
+The container approach works on Windows under WSL2 + Docker Desktop, with a few setup notes:
+
+- Run the autograder inside the WSL distro, not native Windows Python. `Container.start()` and the POSIX cleanup logic in `cmd.py` rely on `os.getuid()` / `os.getgid()` / `signal.SIGTERM` / `os.killpg`, none of which exist on native Windows Python.
+- Keep the autograder repo, student repos, tests repo, and `config.toml` in the WSL filesystem (e.g. `~/...`), not under `/mnt/c/...`. Bind-mounting Windows paths into a Linux container goes through a translation layer that is slow and has odd permission semantics.
+- Enable Docker Desktop's WSL integration for the relevant distro (Settings → Resources → WSL Integration) so `docker` inside WSL talks to Docker Desktop's engine.
+- Set `git config --global core.autocrlf input` before cloning student repos. CRLF line endings baked into shell scripts and Makefiles fail to run inside the Linux container with confusing "command not found" or "bad interpreter" errors.
+- RISC-V emulation works on Windows the same way as on macOS — Docker Desktop ships binfmt + qemu-user-static. If a RISC-V binary fails with `exec format error`, run `docker run --privileged --rm tonistiigi/binfmt --install riscv64` to register the handler.
+
 ## Non-goals
 
 - **No published images.** Dockerfiles are the source of truth; images are built locally.
