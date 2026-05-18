@@ -14,10 +14,33 @@ class SafeConfig(object):
         # Prevents namespace pollution from TOML config files
         dest = self.__dict__
         for k, v in src.items():
-            if k in dest:
-                dest[k] = v
-            else:
+            if k not in dest:
                 fatal(f'safe_update ignoring key: {k}')
+            default = dest[k]
+            if not _toml_types_compatible(default, v):
+                expected = type(default).__name__
+                got = type(v).__name__
+                fatal(f"config key '{k}' expected {expected} but got "
+                      f"{got}: {v!r}")
+            dest[k] = v
+
+
+def _toml_types_compatible(default, v):
+    """Check whether `v` is an acceptable replacement for `default`. Used by
+    SafeConfig.safe_update to catch type errors in TOML config (e.g. a
+    boolean where a string is expected) before they manifest deeper in the
+    call stack."""
+    # A None default means "no opinion" — the field is nullable.
+    if default is None:
+        return True
+    # bool is a subclass of int in Python; we want strict separation so
+    # `enabled = 1` does not silently satisfy a bool field, and `timeout = true`
+    # does not silently satisfy an int field.
+    if isinstance(default, bool) != isinstance(v, bool):
+        return False
+    # isinstance (not `type(x) is type(y)`) so tomlkit's String/Integer/etc.
+    # subclasses of the built-in types still match.
+    return isinstance(v, type(default))
 
 
 def fatal(s):
