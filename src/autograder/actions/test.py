@@ -94,17 +94,18 @@ class TestCase:
     def get_actual(self, local, container=None):
         timeout = self.project_cfg.timeout
         capture_stderr = self.project_cfg.capture_stderr
+        verbose = self.args.very_verbose
         if self.tc_cfg.output == 'stdout':
             # get actual output from stdout
             act = cmd_exec_capture(self.cmd_line, local, timeout=timeout,
                                    capture_stderr=capture_stderr,
-                                   container=container)
+                                   container=container, verbose=verbose)
         else:
             # ignore stdout and get actual output from the specified file
             path = os.path.join(local, self.tc_cfg.output)
             act = cmd_exec_capture(self.cmd_line, local, path, timeout=timeout,
                                    capture_stderr=capture_stderr,
-                                   container=container)
+                                   container=container, verbose=verbose)
     
         if self.project_cfg.strip_output:
             act = act.replace(self.project_cfg.strip_output, '')
@@ -237,10 +238,12 @@ class Test:
                     build_err = f'Makefile not found: {mfu_path}'
                 else:
                     if cmd_exec_rc(['make', '-C', repo_path], timeout=30,
-                                   container=container) != 0:
+                                   container=container,
+                                   verbose=self.args.very_verbose) != 0:
                         build_err = 'Program did not make successfully'
         elif b == 'go':
-            if cmd_exec_rc(['go', 'build'], wd=repo_path, container=container) != 0:
+            if cmd_exec_rc(['go', 'build'], wd=repo_path, container=container,
+                           verbose=self.args.very_verbose) != 0:
                 build_err = 'go build failed'
         else:
             fatal(f'Unknown build plan: \"{b}\"')

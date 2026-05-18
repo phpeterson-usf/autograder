@@ -46,7 +46,8 @@ def cmd_cleanup():
 
 
 def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
-             output_limit=OUTPUT_LIMIT, capture_stderr=True, container=None):
+             output_limit=OUTPUT_LIMIT, capture_stderr=True, container=None,
+             verbose=False):
     presults = ProcResults(0, None, None)
 
     global global_cleanup_registered
@@ -63,6 +64,11 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
     else:
         stderr=subprocess.DEVNULL
 
+    # Snapshot a label for the timing print before container.wrap() rewrites
+    # the argv into a long `docker run ...` line.
+    timing_label = ' '.join(str(a) for a in args[:3])
+    timing_mode = 'native'
+
     # If a Container is provided, rewrite args into a `docker run ...` argv
     # and run that on the host. The container's WORKDIR is the bind-mounted
     # repo, so the host cwd no longer matters.
@@ -70,7 +76,9 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
         args = container.wrap(args)
         wd = None
         shell = False
+        timing_mode = 'docker'
 
+    t0 = time.time()
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=stderr,
                              start_new_session=True, cwd=wd, shell=shell)
@@ -127,24 +135,32 @@ def cmd_exec(args, wd=None, shell=False, check=True, timeout=TIMEOUT,
             # This can only wait for the parent of the process group
             os.waitpid(-pgid, os.WNOHANG)
         raise
+    finally:
+        if verbose:
+            elapsed = time.time() - t0
+            print(f"[timing] {elapsed:5.2f}s [{timing_mode}] {timing_label}",
+                  flush=True)
 
-    # Raise exception if output_limit exceeded        
+    # Raise exception if output_limit exceeded
     if total_bytes > output_limit:
         raise OutputLimitExceeded
-                
+
     return presults
 
 
-def cmd_exec_rc(args, wd=None, timeout=TIMEOUT, capture_stderr=True, container=None):
+def cmd_exec_rc(args, wd=None, timeout=TIMEOUT, capture_stderr=True,
+                container=None, verbose=False):
     presults = cmd_exec(args, wd=wd, check=False, timeout=timeout,
-                        capture_stderr=capture_stderr, container=container)
+                        capture_stderr=capture_stderr, container=container,
+                        verbose=verbose)
     return presults.returncode
 
 
 def cmd_exec_capture(args, wd=None, path=None, shell=False, timeout=TIMEOUT,
-                     capture_stderr=True, container=None):
+                     capture_stderr=True, container=None, verbose=False):
     presults = cmd_exec(args, wd=wd, shell=shell, check=True, timeout=timeout,
-                        capture_stderr=capture_stderr, container=container)
+                        capture_stderr=capture_stderr, container=container,
+                        verbose=verbose)
     if (path):
         # capture output written to path
         with open(path, 'r') as f:
