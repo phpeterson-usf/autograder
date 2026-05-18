@@ -193,6 +193,7 @@ class Test:
             digital_path=self.digital_path,
             engine=self.container_cfg.engine,
             dockerfiles_path=self.container_cfg.dockerfiles_path,
+            network=self.container_cfg.network,
         )
 
     def load_test_cases(self):

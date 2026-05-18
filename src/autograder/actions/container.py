@@ -18,6 +18,7 @@ class ContainerConfig(SafeConfig):
         self.enabled = False
         self.engine = "docker"
         self.dockerfiles_path = ""  # blank = autodetect from package location
+        self.network = False        # allow outbound network from the container
         self.safe_update(cfg)
 
 
@@ -30,13 +31,14 @@ class Container:
     DIGITAL_PATH = "/opt/Digital.jar"
 
     def __init__(self, image, repo_path, project_tests_path, digital_path,
-                 engine="docker", dockerfiles_path=""):
+                 engine="docker", dockerfiles_path="", network=False):
         self.image = image
         self.repo_path = os.path.abspath(repo_path)
         self.project_tests_path = os.path.abspath(project_tests_path)
         self.digital_path = os.path.abspath(digital_path) if digital_path else None
         self.engine = engine
         self.dockerfiles_path = self._resolve_dockerfiles_path(dockerfiles_path)
+        self.network = network
         self.tag = f"autograder-{image}:latest"
         self._built = False
 
@@ -98,13 +100,14 @@ class Container:
         translated = [self._translate(a) for a in args]
         cmd = [
             self.engine, "run", "--rm", "--init",
-            "--network=none",
             "--memory=512m", "--pids-limit=128", "--cpus=1",
             "--user", f"{os.getuid()}:{os.getgid()}",
             "-v", f"{self.repo_path}:{self.WORK_DIR}",
             "-v", f"{self.project_tests_path}:{self.TESTS_DIR}:ro",
             "--workdir", self.WORK_DIR,
         ]
+        if not self.network:
+            cmd += ["--network=none"]
         if self.digital_path and os.path.exists(self.digital_path):
             cmd += ["-v", f"{self.digital_path}:{self.DIGITAL_PATH}:ro"]
         cmd += [self.tag, *translated]

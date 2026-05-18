@@ -46,7 +46,10 @@ User-level (in `~/.config/grade/config.toml`):
 [Container]
 enabled = false   # instructors set to true
 engine = "docker" # "docker" | "podman" | "colima"; defaults to "docker"
+network = false   # set true to allow outbound network from the container
 ```
+
+`network` is a single global switch rather than a per-project field because the per-project test TOML lives in the tests repo that students clone — putting policy there would make container behavior visible to students.
 
 Per-project (in the test TOML, alongside the `[project]` table):
 
@@ -103,7 +106,7 @@ Nothing under the instructor's `~` is mounted other than the explicit paths abov
 Every `docker run` includes:
 
 - `--rm` — fresh container per command; no cross-student state.
-- `--network=none` — no test case requires network. Closes outbound exfiltration.
+- `--network=none` — applied unless `[Container] network = true`. Closes outbound exfiltration; enable when student code legitimately needs a trusted endpoint (e.g. `proxy.golang.org` for Go module fetches).
 - `--init` — proper PID 1 so SIGTERM on timeout propagates cleanly.
 - `--memory=512m --pids=128 --cpus=1` — caps fork bombs and runaway memory. Tunable per project via future `[project]` fields if a course needs more.
 - `--read-only` on `/`, with `/work` writable via the bind-mount. Student `make` writes object files into `/work` (visible on host); nothing else on disk persists.
