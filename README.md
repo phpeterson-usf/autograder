@@ -252,3 +252,20 @@ discount the improvement (new score - old score) by Y%.
 1. Each invocation of `grade class -d` will generate a JSON score file, e.g. `project04-due.json`
 1. The percentage deduction is done with `grade rollup -d` which applies the deductions and generates `project04-rollup.json`
 1. Use `grade upload -d` to choose the JSON file to upload to Canvas, perhaps always the rolled-up grades.
+
+## Container Security (instructors only)
+
+Since you're running potentially untrusted code on your computer, you can isolate that code in a Docker Container
+
+1. You must have the Docker engine running
+1. In your `config.toml` add 
+    ```
+    [Container]
+    enabled = true
+    ```
+1. In your `<project>.toml` add to `[project]`
+    ```
+    container = ["riscv" | "java" | "go"]
+    ```
+1. Networking in the container is disabled on a `config.toml` flag (`Container.network = false`, the default). 
+For Go, we need the network to download dependencies to run the project.
