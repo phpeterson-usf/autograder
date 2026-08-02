@@ -1,0 +1,9 @@
+{
+  "label": "counter reaches 5",
+  "table": { "inputNames": ["EN"], "outputNames": ["COUNT"], "rows": [[1, 5]] },
+  "reset_enabled": true,
+  "reset_input_name": "CLR",
+  "stop_enabled": true,
+  "stop_output_name": "COUNT",
+  "stop_output_value": 5
+}

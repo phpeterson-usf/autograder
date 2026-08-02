@@ -1,0 +1,21 @@
+# Example Golden Gates grading project (uncontained, instructor-injected Test).
+#
+# The student saves their circuit as `counter.ggc` in their repo. The grading Test lives
+# here (instructor-controlled); `ggl.grade --test` merges it onto the student's circuit and
+# runs it headlessly, printing PASS/FAIL, which the autograder compares to `expected`.
+#
+# Requires ggl importable by the `python3` the grader spawns (uncontained):
+#   pip install -e /path/to/ggl        (or add ggl/src to PYTHONPATH)
+
+[project]
+build = "none"        # a circuit has no compile step
+
+[[tests]]
+name = "counts-to-5"
+input = [
+  "python3", "-m", "ggl.grade",
+  "counter.ggc",                              # the student's circuit, in their repo
+  "--test", "$project_tests/counter.test.json"  # the instructor's Test
+]
+expected = "PASS"
+rubric = 10
