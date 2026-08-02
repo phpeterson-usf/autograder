@@ -4,8 +4,9 @@
 # here (instructor-controlled); `ggl.grade --test` merges it onto the student's circuit and
 # runs it headlessly, printing PASS/FAIL, which the autograder compares to `expected`.
 #
-# Requires ggl importable by the `python3` the grader spawns (uncontained):
-#   pip install -e /path/to/ggl        (or add ggl/src to PYTHONPATH)
+# Requires the `ggl-grade` command on PATH (uncontained). Install ggl as its own tool so
+# it works regardless of how the autograder itself was installed:
+#   uv tool install "ggl @ git+https://github.com/usfca-cs-tools/ggl@view-layer"
 
 [project]
 build = "none"        # a circuit has no compile step
@@ -13,7 +14,7 @@ build = "none"        # a circuit has no compile step
 [[tests]]
 name = "counts-to-5"
 input = [
-  "python3", "-m", "ggl.grade",
+  "ggl-grade",
   "counter.ggc",                              # the student's circuit, in their repo
   "--test", "$project_tests/counter.test.json"  # the instructor's Test
 ]
