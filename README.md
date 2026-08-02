@@ -10,9 +10,21 @@
 ## Installation
 1. Autograder can be installed using the [uv](https://docs.astral.sh/uv/) package manager. uv is pre-installed on USF lab systems. If you need to install uv on your personal machine, follow [these instructions](https://docs.astral.sh/uv/getting-started/installation/)
 
-1. Use `uv` to install the autograder package
+1. Use `uv` to install the autograder package. `grade` is installed as a standalone command on your `PATH` (in `~/.local/bin`), so you can run it from any directory without activating a virtual environment.
     ```
     uv tool install git+https://github.com/phpeterson-usf/autograder
+    ```
+    You do **not** need to install Python yourself. autograder requires Python 3.13 or newer, and `uv` automatically downloads and manages a suitable interpreter for the tool, independent of whatever `python3` happens to be on your system.
+
+1. For classes whose projects grade **Golden Gates** circuits, also install the `ggl` engine as a tool. It provides the `ggl-grade` command those projects invoke, and installing it as its own tool puts that command on your `PATH` regardless of how the autograder was installed.
+    ```
+    uv tool install git+https://github.com/usfca-cs-tools/ggl
+    ```
+    Students and instructors install this the same way — grading runs the identical command everywhere, so results match.
+
+1. When a new version of autograder is released, update it with
+    ```
+    uv tool upgrade autograder
     ```
 
 1. Clone your class's tests repo. Use the right one for your class - these are just examples.
@@ -20,7 +32,14 @@
     $ cd ~
     $ git clone git@github.com:/cs315-21s/tests.git
     $ git clone git@github.com:/USF-CS631-S21/tests.git
-    ``` 
+    ```
+
+### Developer Installation
+1. If you are working on autograder itself, install it in editable mode from your local clone. This gives you the same standalone `grade` command, but running against your working tree so that source edits take effect immediately with no reinstall:
+    ```
+    uv tool install --editable ~/path/to/autograder
+    ```
+1. After changing dependencies or entry points in `pyproject.toml`, refresh the tool environment with `uv tool upgrade autograder` (or `uv tool install --force --editable ~/path/to/autograder`).
 
 ## Usage for Students
 1. You can test a project in the current directory like this

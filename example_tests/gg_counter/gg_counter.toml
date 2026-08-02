@@ -9,7 +9,10 @@
 #   uv tool install "ggl @ git+https://github.com/usfca-cs-tools/ggl@view-layer"
 
 [project]
-build = "none"        # a circuit has no compile step
+build = "none"            # a circuit has no compile step
+capture_stderr = false    # ggl-grade prints only PASS/FAIL to stdout; diagnostics (e.g. a
+                          # clocked-test-without-reset warning) go to stderr — keep them out
+                          # of the compared output
 
 [[tests]]
 name = "counts-to-5"
